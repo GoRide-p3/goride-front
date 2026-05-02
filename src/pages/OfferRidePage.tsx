@@ -616,7 +616,7 @@ export function OfferRide() {
                   onClick={() => navigate("/my-rides")}
                   className="py-3 bg-accent text-accent-foreground rounded-lg font-medium hover:bg-accent-hover transition-colors"
                 >
-                  Minhas caronas
+                  Em andamento
                 </button>
               </div>
             </div>

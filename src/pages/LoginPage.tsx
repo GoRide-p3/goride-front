@@ -159,7 +159,7 @@ export function LoginPage() {
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-600">
-            Ainda nao tem conta?{" "}
+            Ainda não tem conta?{" "}
             <Link
               to="/register"
               className="font-semibold text-accent hover:underline"

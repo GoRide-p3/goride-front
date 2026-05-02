@@ -1,16 +1,35 @@
-import type { Ride } from "../types/ride";
+import type { Driver, Ride } from "../types/ride";
+import type { User } from "../types/user";
+import { mockUsers } from "./user";
+
+const toRideGender = (gender: User["gender"]): Driver["gender"] => {
+  if (gender === "Masculino" || gender === "Feminino") return gender;
+
+  return "Outro";
+};
+
+const getMockDriver = (userId: string): Driver => {
+  const user = mockUsers.find((mockUser) => mockUser.id === userId);
+
+  if (!user) {
+    throw new Error(`Mock user not found for ride driver: ${userId}`);
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+    rating: user.rating,
+    totalRatings: user.totalRatings,
+    gender: toRideGender(user.gender),
+  };
+};
 
 export const mockRides: Ride[] = [
   {
     id: "1",
-    driver: {
-      id: "user-2",
-      name: "Carlos Silva",
-      rating: 4.8,
-      totalRatings: 127,
-      gender: "Masculino",
-    },
+    driver: getMockDriver("user-2"),
     departure: "08:30",
+    date: "2026-05-04",
     origin: "Centro - Maceió",
     destination: "UFAL - Campus A.C. Simões",
     price: 8.5,
@@ -21,14 +40,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "2",
-    driver: {
-      id: "user-3",
-      name: "Maria Santos",
-      rating: 4.9,
-      totalRatings: 203,
-      gender: "Feminino",
-    },
+    driver: getMockDriver("user-11"),
     departure: "09:15",
+    date: "2026-05-04",
     origin: "Pajuçara",
     destination: "UFAL - Campus A.C. Simões",
     price: 7.0,
@@ -39,14 +53,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "3",
-    driver: {
-      id: "user-4",
-      name: "João Pedro",
-      rating: 4.7,
-      totalRatings: 89,
-      gender: "Masculino",
-    },
+    driver: getMockDriver("user-12"),
     departure: "10:00",
+    date: "2026-05-05",
     origin: "Ponta Verde",
     destination: "UFAL - Campus A.C. Simões",
     price: 9.0,
@@ -57,14 +66,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "4",
-    driver: {
-      id: "user-7",
-      name: "Ana Carolina",
-      rating: 5.0,
-      totalRatings: 156,
-      gender: "Feminino",
-    },
+    driver: getMockDriver("user-13"),
     departure: "11:30",
+    date: "2026-05-05",
     origin: "Farol",
     destination: "UFAL - Campus A.C. Simões",
     price: 10.0,
@@ -75,14 +79,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "5",
-    driver: {
-      id: "user-6",
-      name: "Pedro Henrique",
-      rating: 4.6,
-      totalRatings: 94,
-      gender: "Masculino",
-    },
+    driver: getMockDriver("user-14"),
     departure: "13:00",
+    date: "2026-05-06",
     origin: "Jatiúca",
     destination: "UFAL - Campus A.C. Simões",
     price: 8.0,
@@ -93,14 +92,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "6",
-    driver: {
-      id: "user-9",
-      name: "Juliana Oliveira",
-      rating: 4.9,
-      totalRatings: 178,
-      gender: "Feminino",
-    },
+    driver: getMockDriver("user-15"),
     departure: "14:30",
+    date: "2026-05-06",
     origin: "Mangabeiras",
     destination: "UFAL - Campus A.C. Simões",
     price: 9.5,
@@ -111,14 +105,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "7",
-    driver: {
-      id: "user-5",
-      name: "Beatriz Costa",
-      rating: 4.9,
-      totalRatings: 154,
-      gender: "Feminino",
-    },
+    driver: getMockDriver("user-5"),
     departure: "07:15",
+    date: "2026-05-07",
     origin: "Jatiúca",
     destination: "UFAL - Campus A.C. Simões",
     price: 6.5,
@@ -129,14 +118,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "8",
-    driver: {
-      id: "user-10",
-      name: "Juliana Oliveira",
-      rating: 4.7,
-      totalRatings: 65,
-      gender: "Feminino",
-    },
+    driver: getMockDriver("user-15"),
     departure: "15:45",
+    date: "2026-05-07",
     origin: "UFAL - Campus A.C. Simões",
     destination: "Pajuçara",
     price: 7.5,
@@ -147,14 +131,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "9",
-    driver: {
-      id: "user-8",
-      name: "Rafael Souza",
-      rating: 4.6,
-      totalRatings: 38,
-      gender: "Masculino",
-    },
+    driver: getMockDriver("user-16"),
     departure: "17:30",
+    date: "2026-05-08",
     origin: "Farol",
     destination: "UFAL - Campus A.C. Simões",
     price: 8.0,
@@ -165,14 +144,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "10",
-    driver: {
-      id: "user-3",
-      name: "Maria Santos",
-      rating: 4.9,
-      totalRatings: 203,
-      gender: "Feminino",
-    },
+    driver: getMockDriver("user-11"),
     departure: "18:20",
+    date: "2026-05-08",
     origin: "UFAL - Campus A.C. Simões",
     destination: "Jatiúca",
     price: 7.0,
@@ -183,14 +157,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "11",
-    driver: {
-      id: "user-4",
-      name: "João Pedro",
-      rating: 4.7,
-      totalRatings: 89,
-      gender: "Masculino",
-    },
+    driver: getMockDriver("user-12"),
     departure: "06:45",
+    date: "2026-05-09",
     origin: "Pajuçara",
     destination: "UFAL - Campus A.C. Simões",
     price: 6.0,
@@ -201,14 +170,9 @@ export const mockRides: Ride[] = [
   },
   {
     id: "12",
-    driver: {
-      id: "user-6",
-      name: "Pedro Henrique",
-      rating: 4.6,
-      totalRatings: 94,
-      gender: "Masculino",
-    },
+    driver: getMockDriver("user-14"),
     departure: "19:00",
+    date: "2026-05-09",
     origin: "UFAL - Campus A.C. Simões",
     destination: "Farol",
     price: 8.5,

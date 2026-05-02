@@ -28,7 +28,7 @@ export function Onboarding() {
         </div>
 
         <h2 className="text-foreground text-3xl font-semibold max-w-sm mt-6 lg:text-4xl lg:max-w-md">
-          Peca uma carona em minutos
+          Peça uma carona em minutos
         </h2>
 
         <p className="text-gray-600 text-base max-w-md leading-relaxed mt-6 lg:text-lg">

@@ -17,6 +17,7 @@ import {
 import { useNavigate, useOutletContext } from "react-router";
 import { mockRides } from "../mocks/rides";
 import { getCurrentUser } from "../utils/auth";
+import { formatLocalDate } from "../utils/date";
 import type { Ride } from "../types/ride";
 
 interface LayoutContext {
@@ -48,15 +49,11 @@ export function FindRide() {
   const [minRating, setMinRating] = useState("");
   const [minPassengers, setMinPassengers] = useState("");
   const [sameGenderOnly, setSameGenderOnly] = useState(false);
-  const [selectedRide, setSelectedRide] = useState<Ride | null>(
-    null,
-  );
+  const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] =
-    useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [showSavedAddresses, setShowSavedAddresses] = useState(false);
-  const [rideSortOrder, setRideSortOrder] =
-    useState<RideSortOrder>("time-asc");
+  const [rideSortOrder, setRideSortOrder] = useState<RideSortOrder>("time-asc");
 
   const savedAddresses = currentUser?.savedAddresses || [];
   const ufalLocation = "UFAL - Campus A.C. Simões";
@@ -113,94 +110,108 @@ export function FindRide() {
     return hours * 60 + minutes;
   };
 
+  const parseCurrencyInput = (value: string) => {
+    const normalizedValue = value.replace(/[^\d,.]/g, "").replace(",", ".");
+    if (!normalizedValue) return null;
+
+    const parsedValue = Number(normalizedValue);
+
+    return Number.isFinite(parsedValue) ? parsedValue : null;
+  };
+
+  const getRideStartTime = (ride: Ride) =>
+    new Date(`${ride.date}T${ride.departureTimeStart}`).getTime();
+
+  const formatRideDate = (dateString: string) =>
+    formatLocalDate(dateString, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
   // Filtrar caronas com base nos filtros aplicados
   const filteredRides = mockRides.filter((ride) => {
-  // rota
-  if (isReversed) {
-    if (
-      !isUfalLocation(ride.origin) ||
-      !locationMatches(ride.destination, origin)
+    // rota
+    if (isReversed) {
+      if (
+        !isUfalLocation(ride.origin) ||
+        !locationMatches(ride.destination, origin)
+      ) {
+        return false;
+      }
+    } else if (
+      !locationMatches(ride.origin, origin) ||
+      !isUfalLocation(ride.destination)
     ) {
       return false;
     }
-  } else if (
-    !locationMatches(ride.origin, origin) ||
-    !isUfalLocation(ride.destination)
-  ) {
-    return false;
-  }
 
-  // preço
-  if (maxPrice && ride.price > parseFloat(maxPrice)) {
-    return false;
-  }
-
-  // avaliação
-  if (
-    minRating &&
-    ride.driver.rating < parseFloat(minRating)
-  ) {
-    return false;
-  }
-
-  // passageiros mínimos
-  if (
-    minPassengers &&
-    ride.confirmedPassengers < parseInt(minPassengers)
-  ) {
-    return false;
-  }
-
-  // gênero
-  if (
-    sameGenderOnly &&
-    ride.driver.gender !== currentUser?.gender
-  ) {
-    return false;
-  }
-
-  // horário inicial
-  if (timeStart) {
-    const rideMinutes = getRideStartMinutes(ride.departureTimeStart);
-
-    const filterMinutes = getRideStartMinutes(timeStart);
-
-    if (rideMinutes < filterMinutes) {
+    // preço
+    const parsedMaxPrice = parseCurrencyInput(maxPrice);
+    if (parsedMaxPrice !== null && ride.price > parsedMaxPrice) {
       return false;
     }
-  }
 
-  // horário final
-  if (timeEnd) {
-    const rideMinutes = getRideStartMinutes(ride.departureTimeStart);
-
-    const filterMinutes = getRideStartMinutes(timeEnd);
-
-    if (rideMinutes > filterMinutes) {
+    // avaliação
+    if (minRating && ride.driver.rating < parseFloat(minRating)) {
       return false;
     }
-  }
 
-  return true;
-});
+    // passageiros mínimos
+    if (minPassengers && ride.confirmedPassengers < parseInt(minPassengers)) {
+      return false;
+    }
 
-const sortedRides = [...filteredRides].sort((a, b) => {
-  if (rideSortOrder === "price-asc") return a.price - b.price;
-  if (rideSortOrder === "price-desc") return b.price - a.price;
-  if (rideSortOrder === "seats-desc") {
-    return b.availableSeats - a.availableSeats;
-  }
-  if (rideSortOrder === "seats-asc") {
-    return a.availableSeats - b.availableSeats;
-  }
+    // data
+    if (date && ride.date !== date) {
+      return false;
+    }
 
-  const minutesA = getRideStartMinutes(a.departureTimeStart);
-  const minutesB = getRideStartMinutes(b.departureTimeStart);
+    // gênero
+    if (sameGenderOnly && ride.driver.gender !== currentUser?.gender) {
+      return false;
+    }
 
-  return rideSortOrder === "time-desc"
-    ? minutesB - minutesA
-    : minutesA - minutesB;
-});
+    // horário inicial
+    if (timeStart) {
+      const rideMinutes = getRideStartMinutes(ride.departureTimeStart);
+
+      const filterMinutes = getRideStartMinutes(timeStart);
+
+      if (rideMinutes < filterMinutes) {
+        return false;
+      }
+    }
+
+    // horário final
+    if (timeEnd) {
+      const rideMinutes = getRideStartMinutes(ride.departureTimeStart);
+
+      const filterMinutes = getRideStartMinutes(timeEnd);
+
+      if (rideMinutes > filterMinutes) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const sortedRides = [...filteredRides].sort((a, b) => {
+    if (rideSortOrder === "price-asc") return a.price - b.price;
+    if (rideSortOrder === "price-desc") return b.price - a.price;
+    if (rideSortOrder === "seats-desc") {
+      return b.availableSeats - a.availableSeats;
+    }
+    if (rideSortOrder === "seats-asc") {
+      return a.availableSeats - b.availableSeats;
+    }
+
+    const timeA = getRideStartTime(a);
+    const timeB = getRideStartTime(b);
+
+    return rideSortOrder === "time-desc" ? timeB - timeA : timeA - timeB;
+  });
 
   const handleRequestRide = (rideId: string) => {
     const ride = mockRides.find((r) => r.id === rideId);
@@ -236,9 +247,7 @@ const sortedRides = [...filteredRides].sort((a, b) => {
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold">
-            Buscar carona
-          </h1>
+          <h1 className="text-xl font-semibold">Buscar carona</h1>
         </div>
       </div>
 
@@ -295,23 +304,27 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                 </div>
 
                 {/* Saved Addresses Dropdown */}
-                {!isReversed && showSavedAddresses && savedAddresses.length > 0 && (
-                  <div className="mt-2 p-2 bg-background border-2 border-primary rounded-xl shadow-lg">
-                    {savedAddresses.map((addr) => (
-                      <button
-                        key={addr.id}
-                        type="button"
-                        onClick={() => handleSelectSavedAddress(addr.address)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg transition-colors"
-                      >
-                        <p className="text-sm font-medium text-foreground">
-                          {addr.label}
-                        </p>
-                        <p className="text-xs text-gray-600">{addr.address}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {!isReversed &&
+                  showSavedAddresses &&
+                  savedAddresses.length > 0 && (
+                    <div className="mt-2 p-2 bg-background border-2 border-primary rounded-xl shadow-lg">
+                      {savedAddresses.map((addr) => (
+                        <button
+                          key={addr.id}
+                          type="button"
+                          onClick={() => handleSelectSavedAddress(addr.address)}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg transition-colors"
+                        >
+                          <p className="text-sm font-medium text-foreground">
+                            {addr.label}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {addr.address}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
               </div>
 
               {/* Destination Input */}
@@ -389,9 +402,7 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                 className="px-5 py-4 bg-background border-2 border-gray-300 rounded-xl hover:border-primary transition-colors flex items-center gap-2"
               >
                 <SlidersHorizontal className="w-5 h-5 text-foreground" />
-                <span className="text-foreground font-medium">
-                  Filtros
-                </span>
+                <span className="text-foreground font-medium">Filtros</span>
               </button>
 
               <button
@@ -412,11 +423,10 @@ const sortedRides = [...filteredRides].sort((a, b) => {
           {showFilters && (
             <div className="mt-4 p-4 bg-[#F5F5F5] rounded-xl space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">
-                  Preço máximo
-                </span>
+                <span className="text-sm text-gray-700">Preço máximo</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
                   placeholder="R$ 0,00"
@@ -424,9 +434,7 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">
-                  Avaliação mínima
-                </span>
+                <span className="text-sm text-gray-700">Avaliação mínima</span>
                 <select
                   value={minRating}
                   onChange={(e) => setMinRating(e.target.value)}
@@ -447,9 +455,7 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                 <input
                   type="number"
                   value={minPassengers}
-                  onChange={(e) =>
-                    setMinPassengers(e.target.value)
-                  }
+                  onChange={(e) => setMinPassengers(e.target.value)}
                   placeholder="0"
                   className="w-24 px-3 py-2 rounded-lg bg-background border border-gray-300 text-sm outline-none focus:border-primary"
                 />
@@ -468,20 +474,14 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                   </div>
                   <button
                     type="button"
-                    onClick={() =>
-                      setSameGenderOnly(!sameGenderOnly)
-                    }
+                    onClick={() => setSameGenderOnly(!sameGenderOnly)}
                     className={`ml-3 relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#1D3557] focus:ring-offset-2 ${
-                      sameGenderOnly
-                        ? "bg-primary"
-                        : "bg-gray-300"
+                      sameGenderOnly ? "bg-primary" : "bg-gray-300"
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform duration-200 ${
-                        sameGenderOnly
-                          ? "translate-x-6"
-                          : "translate-x-1"
+                        sameGenderOnly ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -530,8 +530,7 @@ const sortedRides = [...filteredRides].sort((a, b) => {
               {sortedRides.length === 0 ? (
                 <div className="bg-background rounded-2xl p-8 text-center">
                   <p className="text-foreground">
-                    Nenhuma carona encontrada com os filtros
-                    selecionados.
+                    Nenhuma carona encontrada com os filtros selecionados.
                   </p>
                   <button
                     onClick={() => {
@@ -586,14 +585,17 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                         </p>
                       </div>
                     </div>
-
+                    <div className="flex items-center gap-2 mb-1">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {formatRideDate(ride.date)}
+                      </span>
+                    </div>
                     {/* Route Info */}
                     <div className="mb-4 space-y-2">
                       <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-primary rounded-full flex-shrink-0"></div>
-                        <p className="text-sm text-gray-700">
-                          {ride.origin}
-                        </p>
+                        <p className="text-sm text-gray-700">{ride.origin}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <MapPin className="w-3 h-3 text-accent flex-shrink-0" />
@@ -620,21 +622,18 @@ const sortedRides = [...filteredRides].sort((a, b) => {
 
                     {/* Time and Seats */}
                     <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-gray-500" />
                           <span className="text-sm font-medium text-gray-700">
-                            {ride.departureTimeStart} -{" "}
-                            {ride.departureTimeEnd}
+                            {ride.departureTimeStart} - {ride.departureTimeEnd}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <User className="w-4 h-4 text-gray-500" />
                           <span className="text-sm text-gray-700">
                             {ride.availableSeats}{" "}
-                            {ride.availableSeats === 1
-                              ? "vaga"
-                              : "vagas"}
+                            {ride.availableSeats === 1 ? "vaga" : "vagas"}
                           </span>
                         </div>
                       </div>
@@ -729,6 +728,13 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {selectedRide && formatRideDate(selectedRide.date)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-gray-500" />
                   <span className="text-sm font-medium text-gray-700">
                     {selectedRide?.departureTimeStart} -{" "}
@@ -740,9 +746,7 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                   <User className="w-4 h-4 text-gray-500" />
                   <span className="text-sm text-gray-700">
                     {selectedRide?.availableSeats}{" "}
-                    {selectedRide?.availableSeats === 1
-                      ? "vaga"
-                      : "vagas"}
+                    {selectedRide?.availableSeats === 1 ? "vaga" : "vagas"}
                   </span>
                 </div>
 
@@ -786,9 +790,8 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                 </h2>
 
                 <p className="text-gray-600 text-sm mb-6">
-                  Sua solicitação foi enviada para{" "}
-                  {selectedRide?.driver.name}. Te avisaremos assim
-                  que ele responder!
+                  Sua solicitação foi enviada para {selectedRide?.driver.name}.
+                  Te avisaremos assim que ele responder!
                 </p>
 
                 <div className="w-full bg-gray-50 rounded-xl p-4 mb-6">
@@ -819,6 +822,12 @@ const sortedRides = [...filteredRides].sort((a, b) => {
 
                   <div className="space-y-2 text-left">
                     <div className="flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                      <span className="text-xs text-gray-700">
+                        {selectedRide && formatRideDate(selectedRide.date)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <Clock className="w-3.5 h-3.5 text-gray-500" />
                       <span className="text-xs text-gray-700">
                         {selectedRide?.departureTimeStart} -{" "}
@@ -828,8 +837,7 @@ const sortedRides = [...filteredRides].sort((a, b) => {
                     <div className="flex items-center gap-2">
                       <Car className="w-3.5 h-3.5 text-gray-500" />
                       <span className="text-xs text-gray-700">
-                        R$ {selectedRide?.price.toFixed(2)} por
-                        pessoa
+                        R$ {selectedRide?.price.toFixed(2)} por pessoa
                       </span>
                     </div>
                   </div>

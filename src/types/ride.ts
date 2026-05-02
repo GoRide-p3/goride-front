@@ -12,6 +12,7 @@ export interface Ride {
   id: string;
   driver: Driver;
   departure: string;
+  date: string;
   origin: string;
   destination: string;
   price: number;
