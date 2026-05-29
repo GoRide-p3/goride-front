@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   MapPin,
@@ -31,7 +31,7 @@ import type {
 import { ChatModal } from "./ChatModal";
 import { RatingModal } from "./RatingModal";
 import { formatLocalDate } from "../utils/date";
-import { getMyRides } from "../utils/rides";
+import { ridesService } from "../services/rides";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -73,15 +73,42 @@ export function MyRides() {
   const [directionFilter, setDirectionFilter] =
     useState<DirectionFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
-  const [rides, setRides] = useState<MyRide[]>(() => {
-    const saved = getMyRides();
+  const [rides, setRides] = useState<MyRide[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    const activeMocks = mockMyRides.filter(
-      (ride) => ride.status !== "completed",
-    );
+  useEffect(() => {
+  ridesService
+    .list({ driverId: "user-1", status: "active" })
+    .then((data) => {
+      const mapped: MyRide[] = data.map((ride: any) => ({
+        id: ride.id,
+        origin: ride.origin,
+        destination: ride.destination,
+        date: ride.date,
+        departureTimeStart: ride.departureTimeStart,
+        departureTimeEnd: ride.departureTimeEnd,
+        price: ride.price,
+        totalSeats: ride.totalSeats,
+        availableSeats: ride.availableSeats,
+        routeId: ride.routeId ?? "",
+        routeName: ride.routeName ?? "Rota",
+        sameGenderOnly: ride.sameGenderOnly,
+        status: ride.status,
+        requests: [],
+        confirmedPassengers: [],
+        driverRatingsGiven: false,
+        createdAt: ride.createdAt,
+      }));
 
-    return [...activeMocks, ...saved];
-  });
+      // mantém os mocks ativos e adiciona os do banco
+      const activeMocks = mockMyRides.filter(
+        (r) => r.status !== "completed",
+      );
+      setRides([...activeMocks, ...mapped]);
+    })
+    .catch(console.error)
+    .finally(() => setLoading(false));
+}, []);
   const [ridesAsPassenger, setRidesAsPassenger] = useState<MyRideAsPassenger[]>(
     mockMyRidesAsPassenger.filter((ride) => ride.status !== "completed"),
   );
@@ -218,29 +245,30 @@ export function MyRides() {
       return sortOrder === "soonest" ? dateA - dateB : dateB - dateA;
     });
 
-  const handleDeleteRide = (rideId: string) => {
-    const ride = rides.find((r) => r.id === rideId);
-    if (!ride) return;
+  const handleDeleteRide = async (rideId: string) => {
+  const ride = rides.find((r) => r.id === rideId);
+  if (!ride) return;
 
-    const hoursUntilRide = getHoursUntilRide(
-      ride.date,
-      ride.departureTimeStart,
-    );
+  const hoursUntilRide = getHoursUntilRide(ride.date, ride.departureTimeStart);
+  const hasConfirmedPassengers = ride.confirmedPassengers.length > 0;
 
-    const hasConfirmedPassengers = ride.confirmedPassengers.length > 0;
+  if (hoursUntilRide < 6 && hoursUntilRide > 0 && hasConfirmedPassengers) {
+    console.log("Penalidade aplicada: -0.1 na nota do usuário");
+  }
 
-    if (hoursUntilRide < 6 && hoursUntilRide > 0 && hasConfirmedPassengers) {
-      console.log("Penalidade aplicada: -0.1 na nota do usuário");
-    }
-
+  try {
+    await ridesService.remove(rideId);
     setRides(rides.filter((r) => r.id !== rideId));
-
     setModalType(null);
     setSelectedRide(null);
-
     setRatingSuccessText("Carona deletada com sucesso!");
     setShowRatingSuccess(true);
-  };
+  } catch (error) {
+    console.error("Erro ao deletar carona:", error);
+    setRatingSuccessText("Erro ao deletar carona. Tente novamente.");
+    setShowRatingSuccess(true);
+  }
+};
 
   const handleCompleteRide = (ride: MyRide) => {
     setSelectedRide(ride);
@@ -562,6 +590,14 @@ export function MyRides() {
           </button>
         </div>
 
+        {/* Loading */}
+        {loading ? (
+          <div className="flex items-center justify-center h-40">
+            <p className="text-gray-500 text-sm">Carregando caronas...</p>
+          </div>
+        ) : (
+          <>
+
         {(activeTab === "offered" ? rides.length : ridesAsPassenger.length) >
           0 && (
           <div className="mb-4 space-y-3">
@@ -699,6 +735,8 @@ export function MyRides() {
               </div>
             )}
           </div>
+        )}
+        </>
         )}
 
         {/* Tab Content - Offered Rides */}

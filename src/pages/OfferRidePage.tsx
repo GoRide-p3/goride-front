@@ -20,7 +20,7 @@ import { getCurrentUser } from "../utils/auth";
 import { mockRoutes } from "../mocks/routes";
 import type { RouteOption } from "../types/route";
 import { RouteMap } from "./RouteMap";
-import { saveRide } from "../utils/rides";
+import { ridesService } from "../services/rides";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -49,6 +49,8 @@ export function OfferRide() {
   const ufalLocation = "UFAL - Campus A.C. Simões";
   const originValue = isReversed ? ufalLocation : origin;
   const destinationValue = isReversed ? origin : ufalLocation;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSwapLocations = () => {
     setIsReversed(!isReversed);
@@ -63,43 +65,38 @@ export function OfferRide() {
     e.preventDefault();
     setShowRoutes(true);
   };
-  const handleConfirmRoute = () => {
-    if (!selectedRoute) return;
+  const handleConfirmRoute = async () => {
+  if (!selectedRoute) return;
 
-    const route = mockRoutes.find((r) => r.id === selectedRoute);
+  const route = mockRoutes.find((r) => r.id === selectedRoute);
 
-    saveRide({
-      id: Date.now().toString(),
+  setIsSubmitting(true);
+  setSubmitError(null);
 
+  try {
+    await ridesService.create({
+      driverId: "user-1", 
       origin: originValue,
       destination: destinationValue,
-
       date,
-
       departureTimeStart: timeStart,
       departureTimeEnd: timeEnd,
-
       price: Number(price),
-
       totalSeats: Number(seats),
-      availableSeats: Number(seats),
-
       routeId: selectedRoute,
-      routeName: route?.name || "Nova rota",
-
-      status: "active",
-
+      routeName: route?.name ?? "Nova rota",
       sameGenderOnly,
-
-      requests: [],
-      confirmedPassengers: [],
-
-      createdAt: new Date().toISOString(),
-
-      driverRatingsGiven: false,
     });
+
     setShowSuccessMessage(true);
-  };
+  } catch (error) {
+    setSubmitError(
+      error instanceof Error ? error.message : "Erro ao publicar carona",
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const getTrafficColor = (traffic: RouteOption["traffic"]) => {
     switch (traffic) {
@@ -559,15 +556,20 @@ export function OfferRide() {
               {/* Confirm Button */}
               <button
                 onClick={handleConfirmRoute}
-                disabled={!selectedRoute}
+                disabled={!selectedRoute || isSubmitting}
                 className={`w-full py-4 rounded-xl font-semibold transition-all duration-200 ${
-                  selectedRoute
+                  selectedRoute && !isSubmitting
                     ? "bg-accent text-accent-foreground hover:bg-accent-hover active:scale-[0.98]"
-                    : "bg-muted text-muted-foreground  cursor-not-allowed"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
               >
-                Publicar carona
+                {isSubmitting ? "Publicando..." : "Publicar carona"}
               </button>
+
+              {/* Mensagem de erro logo abaixo do botão */}
+              {submitError && (
+                <p className="mt-2 text-sm text-destructive text-center">{submitError}</p>
+              )}
             </div>
           </div>
         </div>
