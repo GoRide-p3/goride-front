@@ -25,6 +25,7 @@ import { useNavigate, useOutletContext } from "react-router";
 import { getCurrentUser, updateCurrentUser } from "../utils/auth";
 import { formatLocalDate, parseLocalDate } from "../utils/date";
 import type { SavedAddress } from "../types/user";
+import { userService } from "../services/user";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -47,7 +48,7 @@ export function Settings() {
   const [pix, setPix] = useState(currentUser.pix || "");
   const [name, setName] = useState(currentUser.name);
   const [bio, setBio] = useState(currentUser.bio || "");
-  const [birthDate, setBirthDate] = useState(currentUser.birthDate);
+  const [birthDate, setBirthDate] = useState(currentUser.birthDate ?? "");
   const [gender, setGender] = useState(currentUser.gender);
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -76,35 +77,54 @@ export function Settings() {
   const [newAddressLabel, setNewAddressLabel] = useState("");
   const [newAddressValue, setNewAddressValue] = useState("");
 
-  const handleSaveProfile = () => {
-    updateCurrentUser({
+  const handleSaveProfile = async () => {
+  try {
+    const updated = await userService.updateProfile(currentUser.id, {
       name,
       bio,
-      birthDate,
+      birthDate: birthDate ?? undefined,
       gender,
     });
+    console.log("Retorno da API:", updated); // <- adicione
+    console.log("Bio no retorno:", updated.bio); // <- adicione
+    updateCurrentUser(updated);
     setIsEditingProfile(false);
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 3000);
-  };
+  } catch (error) {
+    alert(error instanceof Error ? error.message : "Erro ao salvar perfil");
+  }
+};
 
-  const handleSaveAccount = () => {
-    updateCurrentUser({
+  const handleSaveAccount = async () => {
+  try {
+    const updated = await userService.updateProfile(currentUser.id, {
       email,
       phone,
       pix,
     });
+    updateCurrentUser(updated);
     setIsEditingAccount(false);
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 3000);
-  };
+  } catch (error) {
+    alert(error instanceof Error ? error.message : "Erro ao salvar conta");
+  }
+};
 
-  const handleTogglePrivateMode = () => {
-    const nextPrivateMode = !privateMode;
-
-    setPrivateMode(nextPrivateMode);
-    updateCurrentUser({ privateMode: nextPrivateMode });
-  };
+  const handleTogglePrivateMode = async () => {
+  const nextPrivateMode = !privateMode;
+  setPrivateMode(nextPrivateMode);
+  try {
+    const updated = await userService.updateProfile(currentUser.id, {
+      privateMode: nextPrivateMode,
+    });
+    updateCurrentUser(updated);
+  } catch (error) {
+    setPrivateMode(!nextPrivateMode);
+    alert("Erro ao atualizar modo privado");
+  }
+};
 
   const handleAddAddress = () => {
     if (newAddressLabel.trim() && newAddressValue.trim()) {
@@ -143,20 +163,26 @@ export function Settings() {
     return MapPin;
   };
 
-  const handleChangePassword = () => {
-    if (newPassword !== confirmPassword) {
-      alert("As senhas não coincidem!");
-      return;
-    }
-    console.log("Alterar senha");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 3000);
-  };
+  const handleChangePassword = async () => {
+  if (newPassword !== confirmPassword) {
+    alert("As senhas não coincidem!");
+    return;
+  }
+  if (newPassword.length < 6) {
+    alert("A nova senha deve ter pelo menos 6 caracteres");
+    return;
+  }
+  // TODO: implementar endpoint PATCH /auth/change-password
+  console.log("Alterar senha — endpoint pendente");
+  setCurrentPassword("");
+  setNewPassword("");
+  setConfirmPassword("");
+  setSavedMessage(true);
+  setTimeout(() => setSavedMessage(false), 3000);
+};
 
-  const calculateAge = (birthDate: string) => {
+  const calculateAge = (birthDate: string | null) => {
+    if (!birthDate) return 0;
     const birth = parseLocalDate(birthDate);
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
@@ -312,7 +338,7 @@ export function Settings() {
                   setIsEditingProfile(false);
                   setName(currentUser.name);
                   setBio(currentUser.bio || "");
-                  setBirthDate(currentUser.birthDate);
+                  setBirthDate(currentUser.birthDate || "");
                   setGender(currentUser.gender);
                 }}
                 className="p-2 hover:bg-destructive-muted rounded-lg transition-colors"
@@ -391,13 +417,14 @@ export function Settings() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Idade: {calculateAge(birthDate)} anos
+                    Idade: {birthDate ? `Idade: ${calculateAge(birthDate)} anos` : ""}
                   </p>
                 </>
               ) : (
                 <p className="text-muted-foreground px-4 py-3">
-                  {formatLocalDate(birthDate)} •{" "}
-                  {calculateAge(birthDate)} anos
+                  {birthDate
+                    ? `${formatLocalDate(birthDate)} • ${calculateAge(birthDate)} anos`
+                    : "Não informado"}
                 </p>
               )}
             </div>

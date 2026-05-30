@@ -66,6 +66,10 @@ export function OfferRide() {
   };
   const handleConfirmRoute = async () => {
   if (!selectedRoute) return;
+  if (!currentUser) {
+    setSubmitError("Usuário não autenticado");
+    return;
+  }
 
   const route = mockRoutes.find((r) => r.id === selectedRoute);
 
@@ -74,7 +78,7 @@ export function OfferRide() {
 
   try {
     await ridesService.create({
-      driverId: "user-1", 
+      driverId: currentUser.id,
       origin: originValue,
       destination: destinationValue,
       date,
