@@ -5,3 +5,8 @@ export const formatLocalDate = (
   dateString: string,
   options?: Intl.DateTimeFormatOptions,
 ) => parseLocalDate(dateString).toLocaleDateString("pt-BR", options);
+
+export const formatISODate = (
+  isoString: string,
+  options?: Intl.DateTimeFormatOptions,
+) => new Date(isoString).toLocaleDateString("pt-BR", options);

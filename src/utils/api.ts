@@ -1,14 +1,18 @@
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+import { getToken } from "./auth";
 
-export async function apiFetch<T>(
-  path: string,
-  options?: RequestInit,
-): Promise<T> {
-  const url = `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}${path}`;
-  const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getToken();
+
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}${path}`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...options,
+    },
+  );
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

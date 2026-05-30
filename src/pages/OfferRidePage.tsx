@@ -9,7 +9,6 @@ import {
   Navigation,
   TrendingUp,
   Zap,
-  AlertCircle,
   CheckCircle2,
   Menu,
   ArrowUpDown,

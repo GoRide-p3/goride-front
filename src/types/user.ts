@@ -2,7 +2,7 @@ export type Gender =
   | "Feminino"
   | "Masculino"
   | "Outro"
-  | "Prefiro nao declarar";
+  | "Prefiro não declarar";
 
 export interface SavedAddress {
   id: string;
