@@ -226,28 +226,28 @@ export function OfferRide() {
                         <div className="w-3 h-3 bg-primary rounded-full"></div>
                       </div>
                       {googleMapsLoaded && !isReversed ? (
-      <PlacesAutocomplete
-        value={origin}
-        onChange={setOrigin}
-        placeholder="Digite a origem"
-        className="w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none bg-[#F5F5F5] border-transparent focus:border-[#1D3557] focus:bg-background"
-        required
-      />
-    ) : (
-      <input
-        type="text"
-        value={isReversed ? ufalLocation : origin}
-        onChange={(e) => !isReversed && setOrigin(e.target.value)}
-        placeholder="Digite a origem"
-        disabled={isReversed}
-        className={`w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none ${
-          isReversed
-            ? "bg-gray-100 border-gray-200 text-gray-600 opacity-60 cursor-not-allowed"
-            : "bg-[#F5F5F5] border-transparent focus:border-[#1D3557] focus:bg-background"
-        }`}
-        required
-      />
-    )}
+                        <PlacesAutocomplete
+                          value={origin}
+                          onChange={setOrigin}
+                          placeholder="Digite a origem"
+                          className="w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none bg-[#F5F5F5] border-transparent focus:border-[#1D3557] focus:bg-background"
+                          required
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={isReversed ? ufalLocation : origin}
+                          onChange={(e) => !isReversed && setOrigin(e.target.value)}
+                          placeholder="Digite a origem"
+                          disabled={isReversed}
+                          className={`w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none ${
+                            isReversed
+                              ? "bg-gray-100 border-gray-200 text-gray-600 opacity-60 cursor-not-allowed"
+                              : "bg-[#F5F5F5] border-transparent focus:border-[#1D3557] focus:bg-background"
+                          }`}
+                          required
+                        />
+                      )}
                     </div>
                     <button
                       type="button"
