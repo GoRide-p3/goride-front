@@ -22,7 +22,6 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router";
-import { mockMyRides, mockMyRidesAsPassenger } from "../mocks/my-rides";
 import type {
   MyRide,
   PassengerRequest,
@@ -104,18 +103,12 @@ export function MyRides() {
         createdAt: ride.createdAt,
       }));
 
-      // mantém os mocks ativos e adiciona os do banco
-      const activeMocks = mockMyRides.filter(
-        (r) => r.status !== "completed",
-      );
-      setRides([...activeMocks, ...mapped]);
+      setRides(mapped);
     })
     .catch(console.error)
     .finally(() => setLoading(false));
 }, []);
-  const [ridesAsPassenger, setRidesAsPassenger] = useState<MyRideAsPassenger[]>(
-    mockMyRidesAsPassenger.filter((ride) => ride.status !== "completed"),
-  );
+  const [ridesAsPassenger, setRidesAsPassenger] = useState<MyRideAsPassenger[]>([]);
   const [selectedRide, setSelectedRide] = useState<MyRide | null>(null);
   const [selectedPassengerRide, setSelectedPassengerRide] =
     useState<MyRideAsPassenger | null>(null);
