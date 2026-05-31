@@ -96,7 +96,7 @@ export function Profile() {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-6 py-8 w-full">
         <div className="bg-background rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Avatar */}
+          {/* Avatar Section */}
           <div className="bg-gradient-to-br from-[#1D3557] to-[#2d4a6f] px-6 pt-8 pb-24 relative">
             <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
               <div className="w-32 h-32 bg-background rounded-full flex items-center justify-center shadow-lg border-4 border-white">
@@ -139,7 +139,7 @@ export function Profile() {
             <div className="border-t border-gray-200 my-6" />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-              {/* Gênero */}
+              {/* Gender */}
               <div className="bg-[#F5F5F5] rounded-xl p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
@@ -156,7 +156,7 @@ export function Profile() {
                 </div>
               </div>
 
-              {/* Idade */}
+              {/* Age */}
               {!isPrivateMode && age !== null && (
                 <div className="bg-[#F5F5F5] rounded-xl p-4">
                   <div className="flex items-center gap-3">
@@ -175,7 +175,7 @@ export function Profile() {
                 </div>
               )}
 
-              {/* Telefone */}
+              {/* Phone */}
               {!isPrivateMode && user.phone && (
                 <div className="bg-[#F5F5F5] rounded-xl p-4">
                   <div className="flex items-center gap-3">
@@ -213,7 +213,7 @@ export function Profile() {
                 </div>
               )}
 
-              {/* Membro desde */}
+              {/* Member Since */}
               {user.createdAt && (
                 <div className="bg-[#F5F5F5] rounded-xl p-4">
                   <div className="flex items-center gap-3">
@@ -236,7 +236,7 @@ export function Profile() {
               )}
             </div>
 
-            {/* Bio */}
+            {/* About Section */}
             {user.bio && (
               <div className="mt-6 text-left">
                 <h3 className="text-lg font-semibold text-foreground mb-3">
@@ -250,7 +250,7 @@ export function Profile() {
               </div>
             )}
 
-            {/* Verificações */}
+            {/* Verification Badges */}
             <div className="mt-6">
               <h3 className="text-lg font-semibold text-foreground mb-3 text-left">
                 Verificações

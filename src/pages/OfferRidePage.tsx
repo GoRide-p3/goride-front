@@ -569,7 +569,7 @@ export function OfferRide() {
                 {isSubmitting ? "Publicando..." : "Publicar carona"}
               </button>
 
-              {/* Mensagem de erro logo abaixo do botão */}
+              {/* Error message */}
               {submitError && (
                 <p className="mt-2 text-sm text-destructive text-center">{submitError}</p>
               )}
