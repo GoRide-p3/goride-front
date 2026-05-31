@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router";
-import type { Gender, User } from "../types/user";
-import { saveCurrentUser } from "../utils/auth";
+import type { Gender } from "../types/user";
+import { authService } from "../services/auth";
+import { saveSession } from "../utils/auth";
 
 const genderOptions: Gender[] = [
   "Feminino",
@@ -23,15 +24,27 @@ export function RegisterPage() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const validateEmail = (value: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-  };
-
   const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
+  const validateEmail = (value: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  function isValidCpf(cpf: string): boolean {
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += Number(cpf[i]) * (10 - i);
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== Number(cpf[9])) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += Number(cpf[i]) * (11 - i);
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  return remainder === Number(cpf[10]);
+}
 
   const formatCpf = (value: string) => {
     const digits = onlyDigits(value).slice(0, 11);
-
     return digits
       .replace(/(\d{3})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1.$2")
@@ -40,19 +53,17 @@ export function RegisterPage() {
 
   const formatPhone = (value: string) => {
     const digits = onlyDigits(value).slice(0, 11);
-
     if (digits.length <= 10) {
       return digits
         .replace(/(\d{2})(\d)/, "($1) $2")
         .replace(/(\d{4})(\d)/, "$1-$2");
     }
-
     return digits
       .replace(/(\d{2})(\d)/, "($1) $2")
       .replace(/(\d{5})(\d)/, "$1-$2");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -60,56 +71,42 @@ export function RegisterPage() {
       setError("Digite seu nome completo");
       return;
     }
-
     if (!birthDate) {
       setError("Digite sua data de nascimento");
       return;
     }
-
     if (!validateEmail(email)) {
-      setError("Digite um e-mail valido");
+      setError("Digite um e-mail válido");
       return;
     }
-
-    if (onlyDigits(cpf).length !== 11) {
-      setError("Digite um CPF valido");
+    if (!isValidCpf(onlyDigits(cpf))) {
+      setError("CPF inválido");
       return;
     }
-
     if (onlyDigits(phone).length < 10) {
-      setError("Digite um telefone valido");
+      setError("Digite um telefone válido");
       return;
     }
-
     if (password.length < 6) {
       setError("A senha deve ter pelo menos 6 caracteres");
       return;
     }
 
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: name.trim(),
-      email: email.trim(),
-      phone,
-      gender,
-      birthDate,
-      rating: 0,
-      totalRatings: 0,
-      bio: "",
-      privateMode: false,
-    };
-
-    localStorage.setItem(
-      "registeredAuthUser",
-      JSON.stringify({
-        ...newUser,
+    try {
+      const { user, token } = await authService.register({
+        name: name.trim(),
+        email: email.trim(),
         cpf: onlyDigits(cpf),
         phone,
+        gender,
+        birthDate,
         password,
-      }),
-    );
-    saveCurrentUser(newUser);
-    navigate("/home");
+      });
+      saveSession(user, token);
+      navigate("/home");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Erro ao criar conta");
+    }
   };
 
   const inputClass = (field: string) =>
@@ -126,7 +123,7 @@ export function RegisterPage() {
         <div className="max-w-md">
           <h1 className="text-4xl font-bold mb-4">Criar conta</h1>
           <p className="text-lg opacity-90">
-            Informe seus dados para comecar a usar o GoRide.
+            Informe seus dados para começar a usar o GoRide.
           </p>
         </div>
       </div>
@@ -138,13 +135,13 @@ export function RegisterPage() {
               <ArrowLeft className="w-6 h-6 text-foreground" />
             </button>
           </Link>
-          <h1 className="text-foreground text-3xl font-semibold mb-2 lg:text-3xl">
+          <h1 className="text-foreground text-3xl font-semibold mb-2">
             Cadastro
           </h1>
         </div>
 
         <div className="w-full max-w-md mx-auto">
-          <p className="text-muted-foreground mb-8 text-base lg:text-base">
+          <p className="text-muted-foreground mb-8 text-base">
             Preencha seus dados para criar sua conta
           </p>
 
@@ -261,7 +258,6 @@ export function RegisterPage() {
                 className={inputClass("password")}
                 placeholder="Digite sua senha"
               />
-
               {error && (
                 <p className="text-sm text-destructive mt-2">{error}</p>
               )}
@@ -272,7 +268,7 @@ export function RegisterPage() {
               disabled={isDisabled}
               className={`w-full py-4 rounded-2xl text-base font-semibold transition ${
                 isDisabled
-                  ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted-hover"
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
                   : "bg-accent text-accent-foreground hover:bg-accent-hover active:scale-[0.98] cursor-pointer"
               }`}
             >
@@ -281,8 +277,11 @@ export function RegisterPage() {
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Ja tem conta?{" "}
-            <Link to="/login" className="font-semibold text-accent hover:underline">
+            Já tem conta?{" "}
+            <Link
+              to="/login"
+              className="font-semibold text-accent hover:underline"
+            >
               Entrar
             </Link>
           </p>

@@ -1,0 +1,46 @@
+import { apiFetch } from "../utils/api";
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  gender: string;
+  phone: string | null;
+  birthDate: string | null;
+  rating: number;
+  totalRatings: number;
+  createdAt: string;
+  avatar?: string | null;
+  bio?: string | null;
+  pix?: string | null;
+  privateMode?: boolean;
+  emailVerified?: boolean;
+  savedAddresses?: { id: string; label: string; address: string }[];
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  token: string;
+}
+
+export const authService = {
+  register: (data: {
+    name: string;
+    email: string;
+    cpf: string;
+    phone: string;
+    gender: string;
+    birthDate: string;
+    password: string;
+  }) =>
+    apiFetch<AuthResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  login: (data: { email: string; password: string }) =>
+    apiFetch<AuthResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};

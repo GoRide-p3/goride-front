@@ -1,32 +1,37 @@
-import type { User } from "../types/user";
+import type { AuthUser } from "../services/auth";
 
-export function getCurrentUser(): User | null {
-  const data = localStorage.getItem("currentUser");
+const TOKEN_KEY = "goride_token";
+const USER_KEY = "goride_user";
 
-  if (!data) return null;
-
-  return JSON.parse(data);
+export function saveSession(user: AuthUser, token: string) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-export function saveCurrentUser(user: User) {
-  localStorage.setItem("currentUser", JSON.stringify(user));
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
 }
 
-export function updateCurrentUser(changes: Partial<User>): User | null {
-  const currentUser = getCurrentUser();
-
-  if (!currentUser) return null;
-
-  const updatedUser = {
-    ...currentUser,
-    ...changes,
-  };
-
-  saveCurrentUser(updatedUser);
-
-  return updatedUser;
+export function getCurrentUser(): AuthUser | null {
+  const raw = localStorage.getItem(USER_KEY);
+  return raw ? JSON.parse(raw) : null;
 }
 
-export function logout() {
-  localStorage.removeItem("currentUser");
+export function updateCurrentUser(changes: Partial<AuthUser>): AuthUser | null {
+  const current = getCurrentUser();
+  if (!current) return null;
+  const updated = { ...current, ...changes };
+  localStorage.setItem(USER_KEY, JSON.stringify(updated));
+  return updated;
 }
+
+export function clearSession() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+export function isAuthenticated(): boolean {
+  return Boolean(getToken());
+}
+
+export const logout = clearSession;

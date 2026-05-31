@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router";
-import { authUsers } from "../mocks/authUsers";
+import { authService } from "../services/auth";
+import { saveSession } from "../utils/auth";
 
 export function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,45 +16,30 @@ export function LoginPage() {
     return /^[^\s@]+@[^\s@]+.[^\s@]+$/.test(email);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
 
-    if (!validateEmail(email)) {
-      setError("Digite um e-mail válido");
-      return;
-    }
+  if (!validateEmail(email)) {
+    setError("Digite um e-mail válido");
+    return;
+  }
 
-    if (password.length < 6) {
-      setError("A senha deve ter pelo menos 6 caracteres");
-      return;
-    }
+  if (password.length < 6) {
+    setError("A senha deve ter pelo menos 6 caracteres");
+    return;
+  }
 
-    const registeredUser = localStorage.getItem("registeredAuthUser");
-    const parsedRegisteredUser = registeredUser
-      ? JSON.parse(registeredUser)
-      : null;
-
-    const user = authUsers.find(
-      (user) =>
-        user.email.toLowerCase() === email.toLowerCase() &&
-        user.password === password,
-    ) ?? (
-      parsedRegisteredUser?.email?.toLowerCase() === email.toLowerCase() &&
-      parsedRegisteredUser?.password === password
-        ? parsedRegisteredUser
-        : null
-    );
-
-    if (!user) {
-      setError("E-mail ou senha inválidos");
-      return;
-    }
-
-    localStorage.setItem("currentUser", JSON.stringify(user));
-
+  try {
+    const { user, token } = await authService.login({ email, password });
+    saveSession(user, token);
     navigate("/home");
-  };
+  } catch (error) {
+    setError(error instanceof Error ? error.message : "Erro ao entrar");
+  }
+};
+
+    
   const isDisabled = !email || !password;
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">

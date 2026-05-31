@@ -9,11 +9,11 @@ import { Profile } from "../../pages/ProfilePage";
 import { OfferRide } from "../../pages/OfferRidePage";
 import { MyRides } from "../../pages/MyRidesPage";
 import { History } from "../../pages/HistoryPage";
-// import { ConstructionPage } from "../../pages/ConstructionPage";
 import { PublicProfile } from "../../pages/PublicProfilePage";
 import { Settings } from "../../pages/SettingsPage";
 import { ForgotPassword } from "../../pages/ForgotPasswordPage";
 import { RatingsPage } from "../../pages/RatingsPage";
+import { ProtectedRoute } from "../../components/ProtectedRoute"; 
 
 export const router = createBrowserRouter([
   {
@@ -29,12 +29,16 @@ export const router = createBrowserRouter([
     Component: RegisterPage,
   },
   {
-        path: "/forgot-password",
-        Component: ForgotPassword,
-      },
+    path: "/forgot-password",
+    Component: ForgotPassword,
+  },
   {
     path: "/",
-    Component: Layout,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         path: "/home",
@@ -60,7 +64,7 @@ export const router = createBrowserRouter([
         path: "/history",
         Component: History,
       },
-       {
+      {
         path: "/user/:userId",
         Component: PublicProfile,
       },
@@ -76,7 +80,6 @@ export const router = createBrowserRouter([
         path: "/settings",
         Component: Settings,
       },
-      
     ],
   },
 ]);

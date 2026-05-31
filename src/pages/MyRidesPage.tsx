@@ -32,6 +32,7 @@ import { ChatModal } from "./ChatModal";
 import { RatingModal } from "./RatingModal";
 import { formatLocalDate } from "../utils/date";
 import { ridesService } from "../services/rides";
+import { getCurrentUser } from "../utils/auth";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -75,10 +76,13 @@ export function MyRides() {
   const [showFilters, setShowFilters] = useState(false);
   const [rides, setRides] = useState<MyRide[]>([]);
   const [loading, setLoading] = useState(true);
+  const currentUser = getCurrentUser();
 
   useEffect(() => {
+  if (!currentUser) return;
+
   ridesService
-    .list({ driverId: "user-1", status: "active" })
+    .list({ driverId: currentUser.id, status: "active" })
     .then((data) => {
       const mapped: MyRide[] = data.map((ride: any) => ({
         id: ride.id,

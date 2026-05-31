@@ -1,7 +1,17 @@
-import { ArrowLeft, Star, User as UserIcon, MapPin, Menu, Phone, CreditCard, Calendar as CalendarIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Star,
+  User as UserIcon,
+  MapPin,
+  Menu,
+  Phone,
+  CreditCard,
+  Calendar as CalendarIcon,
+} from "lucide-react";
+import { useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import { getCurrentUser } from "../utils/auth";
-import { formatLocalDate, parseLocalDate } from "../utils/date";
+import { parseLocalDate, formatISODate } from "../utils/date";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -14,14 +24,16 @@ export function Profile() {
   const { setSidebarOpen } = useOutletContext<LayoutContext>();
   const user = getCurrentUser();
 
-  if (!user) {
-    navigate("/");
-    return null;
-  }
+  useEffect(() => {
+    if (!user) navigate("/");
+  }, [user, navigate]);
+
+  if (!user) return null;
 
   const isPrivateMode = user.privateMode ?? false;
 
-  const calculateAge = (birthDate: string) => {
+  const calculateAge = (birthDate: string | null) => {
+    if (!birthDate) return null;
     const birth = parseLocalDate(birthDate);
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
@@ -35,36 +47,29 @@ export function Profile() {
     return age;
   };
 
+  const age = calculateAge(user.birthDate ?? null);
+
   const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
-    const stars = [];
-
-    for (let i = 0; i < 5; i++) {
-      if (i < fullStars) {
-        stars.push(
-          <Star
-            key={i}
-            className="w-5 h-5 text-yellow-500 fill-yellow-500"
-          />,
+    return Array.from({ length: 5 }, (_, i) => {
+      if (i < fullStars)
+        return (
+          <Star key={i} className="w-5 h-5 text-yellow-500 fill-yellow-500" />
         );
-      } else if (i === fullStars && hasHalfStar) {
-        stars.push(
+      if (i === fullStars && hasHalfStar)
+        return (
           <div key={i} className="relative w-5 h-5">
             <Star className="w-5 h-5 text-gray-300 fill-gray-300 absolute" />
             <div className="overflow-hidden w-1/2">
               <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
             </div>
-          </div>,
+          </div>
         );
-      } else {
-        stars.push(
-          <Star key={i} className="w-5 h-5 text-gray-300 fill-gray-300" />,
-        );
-      }
-    }
-
-    return stars;
+      return (
+        <Star key={i} className="w-5 h-5 text-gray-300 fill-gray-300" />
+      );
+    });
   };
 
   return (
@@ -89,7 +94,7 @@ export function Profile() {
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-8 w-full">
         <div className="bg-background rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Avatar Section */}
           <div className="bg-gradient-to-br from-[#1D3557] to-[#2d4a6f] px-6 pt-8 pb-24 relative">
@@ -109,17 +114,14 @@ export function Profile() {
           </div>
 
           {/* User Info */}
-
           <div className="pt-20 px-6 pb-6">
             <div className="flex flex-col items-center justify-center">
-              {/* Name */}
               <h2 className="text-2xl font-bold text-foreground mb-2 text-center">
                 {user.name}
               </h2>
-              {/* Rating - Clickable */}
               <button
                 onClick={() => navigate("/profile/ratings")}
-                className="flex items-center justify-center gap-2 mb-4 hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-2 mb-4 hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
               >
                 <div className="flex items-center gap-1">
                   {renderStars(user.rating)}
@@ -134,10 +136,8 @@ export function Profile() {
               </button>
             </div>
 
-            {/* Divider */}
-            <div className="border-t border-gray-200 my-6"></div>
+            <div className="border-t border-gray-200 my-6" />
 
-            {/* Details Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
               {/* Gender */}
               <div className="bg-[#F5F5F5] rounded-xl p-4">
@@ -157,7 +157,7 @@ export function Profile() {
               </div>
 
               {/* Age */}
-              {!isPrivateMode && (
+              {!isPrivateMode && age !== null && (
                 <div className="bg-[#F5F5F5] rounded-xl p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
@@ -168,7 +168,7 @@ export function Profile() {
                         Idade
                       </p>
                       <p className="text-base font-semibold text-foreground">
-                        {calculateAge(user.birthDate)} anos
+                        {age} anos
                       </p>
                     </div>
                   </div>
@@ -214,24 +214,26 @@ export function Profile() {
               )}
 
               {/* Member Since */}
-              <div className="bg-[#F5F5F5] rounded-xl p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#E63946] rounded-full flex items-center justify-center">
-                    <MapPin className="w-6 h-6 text-primary-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium uppercase mb-1">
-                      Membro desde
-                    </p>
-                    <p className="text-base font-semibold text-foreground">
-                      {formatLocalDate(user.birthDate, {
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </p>
+              {user.createdAt && (
+                <div className="bg-[#F5F5F5] rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-[#E63946] rounded-full flex items-center justify-center">
+                      <MapPin className="w-6 h-6 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium uppercase mb-1">
+                        Membro desde
+                      </p>
+                      <p className="text-base font-semibold text-foreground">
+                        {formatISODate(user.createdAt, {
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* About Section */}
@@ -254,14 +256,34 @@ export function Profile() {
                 Verificações
               </h3>
               <div className="flex flex-wrap gap-2">
-                <div className="px-4 py-2 bg-success border border-success-border rounded-full flex items-center gap-2">
-                  <div className="w-2 h-2 bg-success-foreground rounded-full"></div>
-                  <span className="text-sm font-medium text-success-foreground">
-                    E-mail verificado
+                <div
+                  className={`px-4 py-2 rounded-full flex items-center gap-2 border ${
+                    user.emailVerified
+                      ? "bg-success border-success-border"
+                      : "bg-gray-100 border-gray-200"
+                  }`}
+                >
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      user.emailVerified
+                        ? "bg-success-foreground"
+                        : "bg-gray-400"
+                    }`}
+                  />
+                  <span
+                    className={`text-sm font-medium ${
+                      user.emailVerified
+                        ? "text-success-foreground"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {user.emailVerified
+                      ? "E-mail verificado"
+                      : "E-mail não verificado"}
                   </span>
                 </div>
                 <div className="px-4 py-2 bg-info border border-blue-200 rounded-full flex items-center gap-2">
-                  <div className="w-2 h-2 bg-info-foreground rounded-full"></div>
+                  <div className="w-2 h-2 bg-info-foreground rounded-full" />
                   <span className="text-sm font-medium text-info-foreground">
                     Perfil completo
                   </span>
@@ -279,22 +301,17 @@ export function Profile() {
                   <p className="text-xs text-gray-600 mt-1">Avaliações</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">
-                    {Math.floor(Math.random() * 50) + 10}
-                  </p>
+                  <p className="text-2xl font-bold text-foreground">0</p>
                   <p className="text-xs text-gray-600 mt-1">Caronas</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">
-                    {Math.floor(Math.random() * 12) + 1}
-                  </p>
+                  <p className="text-2xl font-bold text-foreground">0</p>
                   <p className="text-xs text-gray-600 mt-1">Meses ativo</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
