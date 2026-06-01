@@ -13,6 +13,7 @@ import {
   Menu,
   ArrowUpDown,
   Bookmark,
+  AlertCircle,
 } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router";
 import { getCurrentUser } from "../utils/auth";
@@ -20,6 +21,8 @@ import { mockRoutes } from "../mocks/routes";
 import type { RouteOption } from "../types/route";
 import { RouteMap } from "./RouteMap";
 import { ridesService } from "../services/rides";
+import { useGoogleMaps } from "../hooks/useGoogleMaps";
+import { PlacesAutocomplete } from "../components/PlacesAutocomplete";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -50,6 +53,8 @@ export function OfferRide() {
   const destinationValue = isReversed ? origin : ufalLocation;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const googleMapsLoaded = useGoogleMaps();
 
   const handleSwapLocations = () => {
     setIsReversed(!isReversed);
@@ -61,9 +66,46 @@ export function OfferRide() {
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setShowRoutes(true);
-  };
+  e.preventDefault();
+  setFormError(null);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selectedDate = new Date(`${date}T00:00:00`);
+
+  // data não pode ser no passado
+  if (selectedDate < today) {
+    setFormError("A data da viagem não pode ser no passado");
+    return;
+  }
+
+  // se for hoje, horário de partida deve ser maior que agora
+  const isToday = selectedDate.getTime() === today.getTime();
+  if (isToday && timeStart) {
+    const now = new Date();
+    const [hours, minutes] = timeStart.split(":").map(Number);
+    const departure = new Date();
+    departure.setHours(hours, minutes, 0, 0);
+    if (departure <= now) {
+      setFormError("O horário de partida deve ser maior que o horário atual");
+      return;
+    }
+  }
+
+  // horário final deve ser maior que o inicial
+  if (timeStart && timeEnd && timeEnd <= timeStart) {
+    setFormError("O horário final deve ser maior que o horário inicial");
+    return;
+  }
+
+  // preço não pode ser negativo
+  if (Number(price) < 0) {
+    setFormError("O preço não pode ser negativo");
+    return;
+  }
+
+  setShowRoutes(true);
+};
   const handleConfirmRoute = async () => {
   if (!selectedRoute) return;
   if (!currentUser) {
@@ -183,21 +225,29 @@ export function OfferRide() {
                       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
                         <div className="w-3 h-3 bg-primary rounded-full"></div>
                       </div>
-                      <input
-                        type="text"
-                        value={isReversed ? ufalLocation : origin}
-                        onChange={(e) =>
-                          !isReversed && setOrigin(e.target.value)
-                        }
-                        placeholder="Digite a origem"
-                        disabled={isReversed}
-                        className={`w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none ${
-                          isReversed
-                            ? "bg-gray-100 border-gray-200 text-gray-600 opacity-60 cursor-not-allowed"
-                            : "bg-[#F5F5F5] border-transparent focus:border-[#1D3557] focus:bg-background"
-                        }`}
-                        required
-                      />
+                      {googleMapsLoaded && !isReversed ? (
+                        <PlacesAutocomplete
+                          value={origin}
+                          onChange={setOrigin}
+                          placeholder="Digite a origem"
+                          className="w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none bg-[#F5F5F5] border-transparent focus:border-[#1D3557] focus:bg-background"
+                          required
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={isReversed ? ufalLocation : origin}
+                          onChange={(e) => !isReversed && setOrigin(e.target.value)}
+                          placeholder="Digite a origem"
+                          disabled={isReversed}
+                          className={`w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none ${
+                            isReversed
+                              ? "bg-gray-100 border-gray-200 text-gray-600 opacity-60 cursor-not-allowed"
+                              : "bg-[#F5F5F5] border-transparent focus:border-[#1D3557] focus:bg-background"
+                          }`}
+                          required
+                        />
+                      )}
                     </div>
                     <button
                       type="button"
@@ -389,6 +439,14 @@ export function OfferRide() {
                   </button>
                 </label>
               </div>
+
+              {/* Error validation */}
+              {formError && (
+                <div className="flex items-center gap-2 p-3 bg-destructive-muted rounded-xl">
+                  <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                  <p className="text-sm text-destructive">{formError}</p>
+                </div>
+              )}
 
               {/* Submit Button */}
               <button

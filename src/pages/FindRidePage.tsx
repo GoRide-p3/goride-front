@@ -19,6 +19,8 @@ import { mockRides } from "../mocks/rides";
 import { getCurrentUser } from "../utils/auth";
 import { formatLocalDate } from "../utils/date";
 import type { Ride } from "../types/ride";
+import { useGoogleMaps } from "../hooks/useGoogleMaps";
+import { PlacesAutocomplete } from "../components/PlacesAutocomplete";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -59,6 +61,7 @@ export function FindRide() {
   const ufalLocation = "UFAL - Campus A.C. Simões";
   const originValue = isReversed ? ufalLocation : origin;
   const destinationValue = isReversed ? origin : ufalLocation;
+  const googleMapsLoaded = useGoogleMaps();
 
   const handleSwapLocations = () => {
     setIsReversed(!isReversed);
@@ -280,18 +283,27 @@ export function FindRide() {
                     <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
                       <div className="w-3 h-3 bg-primary rounded-full"></div>
                     </div>
-                    <input
-                      type="text"
-                      value={isReversed ? ufalLocation : origin}
-                      onChange={(e) => !isReversed && setOrigin(e.target.value)}
-                      placeholder="De onde você sai?"
-                      disabled={isReversed}
-                      className={`w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none ${
-                        isReversed
-                          ? "bg-gray-100 border-gray-200 text-gray-600 opacity-60 cursor-not-allowed"
-                          : "bg-[#F5F5F5] border-transparent focus:border-primary focus:bg-background"
-                      }`}
-                    />
+                    {googleMapsLoaded && !isReversed ? (
+                      <PlacesAutocomplete
+                        value={origin}
+                        onChange={setOrigin}
+                        placeholder="De onde você sai?"
+                        className="w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none bg-[#F5F5F5] border-transparent focus:border-primary focus:bg-background"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={isReversed ? ufalLocation : origin}
+                        onChange={(e) => !isReversed && setOrigin(e.target.value)}
+                        placeholder="De onde você sai?"
+                        disabled={isReversed}
+                        className={`w-full pl-11 pr-4 py-4 rounded-xl border-2 transition-all outline-none ${
+                          isReversed
+                            ? "bg-gray-100 border-gray-200 text-gray-600 opacity-60 cursor-not-allowed"
+                            : "bg-[#F5F5F5] border-transparent focus:border-primary focus:bg-background"
+                        }`}
+                      />
+                    )}
                   </div>
                   <button
                     type="button"
