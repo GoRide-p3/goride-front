@@ -32,6 +32,7 @@ import { RatingModal } from "./RatingModal";
 import { formatLocalDate } from "../utils/date";
 import { ridesService } from "../services/rides";
 import { getCurrentUser } from "../utils/auth";
+import { rideRequestsService } from "../services/ride-request";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -78,36 +79,115 @@ export function MyRides() {
   const currentUser = getCurrentUser();
 
   useEffect(() => {
-  if (!currentUser) return;
+    if (!currentUser) return;
 
-  ridesService
-    .list({ driverId: currentUser.id, status: "active" })
-    .then((data) => {
-      const mapped: MyRide[] = data.map((ride: any) => ({
-        id: ride.id,
-        origin: ride.origin,
-        destination: ride.destination,
-        date: ride.date,
-        departureTimeStart: ride.departureTimeStart,
-        departureTimeEnd: ride.departureTimeEnd,
-        price: ride.price,
-        totalSeats: ride.totalSeats,
-        availableSeats: ride.availableSeats,
-        routeId: ride.routeId ?? "",
-        routeName: ride.routeName ?? "Rota",
-        sameGenderOnly: ride.sameGenderOnly,
-        status: ride.status,
-        requests: [],
-        confirmedPassengers: [],
-        driverRatingsGiven: false,
-        createdAt: ride.createdAt,
-      }));
+    ridesService
+      .list({ driverId: currentUser.id, status: "active" })
+      .then(async (data) => {
+        const ridesWithRequests = await Promise.all(
+          data.map(async (ride: any) => {
+            const requests = await rideRequestsService.listByRide(ride.id);
+            
+            return {
+              id: ride.id,
+              origin: ride.origin,
+              destination: ride.destination,
+              date: ride.date,
+              departureTimeStart: ride.departureTimeStart,
+              departureTimeEnd: ride.departureTimeEnd,
+              price: ride.price,
+              totalSeats: ride.totalSeats,
+              availableSeats: ride.availableSeats,
+              routeId: ride.routeId ?? "",
+              routeName: ride.routeName ?? "Rota",
+              sameGenderOnly: ride.sameGenderOnly,
+              status: ride.status,
+              driverRatingsGiven: false,
+              createdAt: ride.createdAt,
+              
+              requests: requests
+                .filter((r: any) => r.status === "pending")
+                .map((r: any) => ({
+                  id: r.id,
+                  passenger: {
+                    id: r.passenger.id,
+                    name: r.passenger.name,
+                    rating: r.passenger.rating,
+                    totalRatings: r.passenger.totalRatings,
+                    gender: r.passenger.gender,
+                    phone: r.passenger.phone ?? "",
+                  },
+                  status: r.status,
+                  requestedAt: r.createdAt,
+                })),
+              
+              confirmedPassengers: requests
+                .filter((r: any) => r.status === "accepted")
+                .map((r: any) => ({
+                  id: r.id,
+                  passenger: {
+                    id: r.passenger.id,
+                    name: r.passenger.name,
+                    rating: r.passenger.rating,
+                    totalRatings: r.passenger.totalRatings,
+                    gender: r.passenger.gender,
+                    phone: r.passenger.phone ?? "",
+                  },
+                  status: "accepted" as const,
+                  requestedAt: r.createdAt,
+                })),
+            };
+          }),
+        );
 
-      setRides(mapped);
-    })
-    .catch(console.error)
-    .finally(() => setLoading(false));
-}, []);
+        setRides(ridesWithRequests);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    rideRequestsService
+      .listByPassenger(currentUser.id)
+      .then((data) => {
+        const mapped: MyRideAsPassenger[] = data.map((request: any) => ({
+          id: request.id,
+          origin: request.ride.origin,
+          destination: request.ride.destination,
+          date: request.ride.date,
+          departureTimeStart: request.ride.departureTimeStart,
+          departureTimeEnd: request.ride.departureTimeEnd,
+          price: request.ride.price,
+          totalSeats: request.ride.totalSeats,
+          availableSeats: request.ride.availableSeats,
+          routeId: request.ride.routeId ?? "",
+          routeName: request.ride.routeName ?? "Rota",
+          sameGenderOnly: request.ride.sameGenderOnly,
+          status: request.status === "accepted"
+            ? "confirmed"
+            : request.status === "rejected"
+              ? "cancelled"
+              : "pending",
+          driver: {
+            id: request.ride.driver.id,
+            name: request.ride.driver.name,
+            rating: request.ride.driver.rating,
+            totalRatings: request.ride.driver.totalRatings,
+            phone: request.ride.driver.phone ?? "",
+          },
+          otherPassengers: [],
+          passengerRatingGiven: undefined,
+          requestedAt: request.createdAt,
+          createdAt: request.createdAt,
+        }));
+
+        setRidesAsPassenger(mapped);
+      })
+      .catch(console.error);
+  }, []);
+
   const [ridesAsPassenger, setRidesAsPassenger] = useState<MyRideAsPassenger[]>([]);
   const [selectedRide, setSelectedRide] = useState<MyRide | null>(null);
   const [selectedPassengerRide, setSelectedPassengerRide] =
@@ -396,67 +476,57 @@ export function MyRides() {
     setProcessingRequest(requestId);
     setRequestAction("accept");
 
-    setTimeout(() => {
-      const updatedRides = rides.map((ride) => {
-        if (ride.id === rideId) {
-          const request = ride.requests.find((r) => r.id === requestId);
-
-          if (request && ride.availableSeats > 0) {
-            return {
-              ...ride,
-              requests: ride.requests.filter((r) => r.id !== requestId),
-              confirmedPassengers: [
-                ...ride.confirmedPassengers,
-                {
-                  ...request,
-                  status: "accepted" as const,
-                },
-              ],
-              availableSeats: ride.availableSeats - 1,
-            };
+    rideRequestsService
+      .update(requestId, "accepted", currentUser!.id) 
+      .then(() => {
+        const updatedRides = rides.map((ride) => {
+          if (ride.id === rideId) {
+            const request = ride.requests.find((r) => r.id === requestId);
+            if (request && ride.availableSeats > 0) {
+              return {
+                ...ride,
+                requests: ride.requests.filter((r) => r.id !== requestId),
+                confirmedPassengers: [
+                  ...ride.confirmedPassengers,
+                  { ...request, status: "accepted" as const },
+                ],
+                availableSeats: ride.availableSeats - 1,
+              };
+            }
           }
-        }
-
-        return ride;
+          return ride;
+        });
+        setRides(updatedRides);
+        setSelectedRide(updatedRides.find((r) => r.id === rideId) || null);
+      })
+      .catch(console.error)
+      .finally(() => {
+        setProcessingRequest(null);
+        setRequestAction(null);
       });
-
-      setRides(updatedRides);
-
-      const updatedSelectedRide =
-        updatedRides.find((r) => r.id === rideId) || null;
-
-      setSelectedRide(updatedSelectedRide);
-
-      setProcessingRequest(null);
-      setRequestAction(null);
-    }, 700);
   };
 
-  const handleRejectRequest = (rideId: string, requestId: string) => {
-    setProcessingRequest(requestId);
-    setRequestAction("reject");
+const handleRejectRequest = (rideId: string, requestId: string) => {
+  setProcessingRequest(requestId);
+  setRequestAction("reject");
 
-    setTimeout(() => {
+  rideRequestsService
+    .update(requestId, "rejected", currentUser!.id) 
+    .then(() => {
       const updatedRides = rides.map((ride) =>
         ride.id === rideId
-          ? {
-              ...ride,
-              requests: ride.requests.filter((r) => r.id !== requestId),
-            }
+          ? { ...ride, requests: ride.requests.filter((r) => r.id !== requestId) }
           : ride,
       );
-
       setRides(updatedRides);
-
-      const updatedSelectedRide =
-        updatedRides.find((r) => r.id === rideId) || null;
-
-      setSelectedRide(updatedSelectedRide);
-
+      setSelectedRide(updatedRides.find((r) => r.id === rideId) || null);
+    })
+    .catch(console.error)
+    .finally(() => {
       setProcessingRequest(null);
       setRequestAction(null);
-    }, 700);
-  };
+    });
+};
 
   const handleRemovePassenger = (rideId: string, passengerId: string) => {
     setRides(

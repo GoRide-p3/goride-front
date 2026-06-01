@@ -15,12 +15,13 @@ import {
   Bookmark,
 } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router";
-import { mockRides } from "../mocks/rides";
 import { getCurrentUser } from "../utils/auth";
 import { formatLocalDate } from "../utils/date";
 import type { Ride } from "../types/ride";
 import { useGoogleMaps } from "../hooks/useGoogleMaps";
 import { PlacesAutocomplete } from "../components/PlacesAutocomplete";
+import { rideRequestsService } from "../services/ride-request";
+import { ridesService } from "../services/rides";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -56,6 +57,10 @@ export function FindRide() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [showSavedAddresses, setShowSavedAddresses] = useState(false);
   const [rideSortOrder, setRideSortOrder] = useState<RideSortOrder>("time-asc");
+  const [rides, setRides] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   const savedAddresses = currentUser?.savedAddresses || [];
   const ufalLocation = "UFAL - Campus A.C. Simões";
@@ -72,10 +77,32 @@ export function FindRide() {
     setShowSavedAddresses(false);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowResults(true);
+    setIsSearching(true);
+    setShowResults(false);
+
+    try {
+      const params: Record<string, string> = {};
+      if (originValue) params.origin = originValue;
+      if (destinationValue) params.destination = destinationValue;
+      if (date) params.date = date;
+      if (timeStart) params.timeStart = timeStart;
+      if (timeEnd) params.timeEnd = timeEnd;
+      if (maxPrice) params.maxPrice = maxPrice;
+      if (sameGenderOnly) params.sameGenderOnly = "true";
+      params.status = "active";
+
+      const data = await ridesService.list(params);
+      setRides(data);
+      setShowResults(true);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSearching(false);
+    }
   };
+  
   useEffect(() => {
     if (showModal || showSuccessMessage) {
       document.body.style.overflow = "hidden";
@@ -88,43 +115,6 @@ export function FindRide() {
     };
   }, [showModal, showSuccessMessage]);
 
-  const normalizeLocation = (value: string) =>
-    value
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-
-  const locationMatches = (rideLocation: string, searchLocation: string) => {
-    const normalizedRideLocation = normalizeLocation(rideLocation);
-    const normalizedSearchLocation = normalizeLocation(searchLocation);
-
-    return (
-      !normalizedSearchLocation ||
-      normalizedRideLocation.includes(normalizedSearchLocation)
-    );
-  };
-
-  const isUfalLocation = (location: string) =>
-    normalizeLocation(location).includes("ufal");
-
-  const getRideStartMinutes = (time: string) => {
-    const [hours, minutes] = time.split(":").map(Number);
-    return hours * 60 + minutes;
-  };
-
-  const parseCurrencyInput = (value: string) => {
-    const normalizedValue = value.replace(/[^\d,.]/g, "").replace(",", ".");
-    if (!normalizedValue) return null;
-
-    const parsedValue = Number(normalizedValue);
-
-    return Number.isFinite(parsedValue) ? parsedValue : null;
-  };
-
-  const getRideStartTime = (ride: Ride) =>
-    new Date(`${ride.date}T${ride.departureTimeStart}`).getTime();
-
   const formatRideDate = (dateString: string) =>
     formatLocalDate(dateString, {
       day: "2-digit",
@@ -132,104 +122,40 @@ export function FindRide() {
       year: "numeric",
     });
 
-  // Filtrar caronas com base nos filtros aplicados
-  const filteredRides = mockRides.filter((ride) => {
-    // rota
-    if (isReversed) {
-      if (
-        !isUfalLocation(ride.origin) ||
-        !locationMatches(ride.destination, origin)
-      ) {
-        return false;
-      }
-    } else if (
-      !locationMatches(ride.origin, origin) ||
-      !isUfalLocation(ride.destination)
-    ) {
-      return false;
-    }
-
-    // preço
-    const parsedMaxPrice = parseCurrencyInput(maxPrice);
-    if (parsedMaxPrice !== null && ride.price > parsedMaxPrice) {
-      return false;
-    }
-
-    // avaliação
-    if (minRating && ride.driver.rating < parseFloat(minRating)) {
-      return false;
-    }
-
-    // passageiros mínimos
-    if (minPassengers && ride.confirmedPassengers < parseInt(minPassengers)) {
-      return false;
-    }
-
-    // data
-    if (date && ride.date !== date) {
-      return false;
-    }
-
-    // gênero
-    if (sameGenderOnly && ride.driver.gender !== currentUser?.gender) {
-      return false;
-    }
-
-    // horário inicial
-    if (timeStart) {
-      const rideMinutes = getRideStartMinutes(ride.departureTimeStart);
-
-      const filterMinutes = getRideStartMinutes(timeStart);
-
-      if (rideMinutes < filterMinutes) {
-        return false;
-      }
-    }
-
-    // horário final
-    if (timeEnd) {
-      const rideMinutes = getRideStartMinutes(ride.departureTimeStart);
-
-      const filterMinutes = getRideStartMinutes(timeEnd);
-
-      if (rideMinutes > filterMinutes) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  const sortedRides = [...filteredRides].sort((a, b) => {
+  const sortedRides = [...rides].sort((a, b) => {
     if (rideSortOrder === "price-asc") return a.price - b.price;
     if (rideSortOrder === "price-desc") return b.price - a.price;
-    if (rideSortOrder === "seats-desc") {
-      return b.availableSeats - a.availableSeats;
-    }
-    if (rideSortOrder === "seats-asc") {
-      return a.availableSeats - b.availableSeats;
-    }
-
-    const timeA = getRideStartTime(a);
-    const timeB = getRideStartTime(b);
-
+    if (rideSortOrder === "seats-desc") return b.availableSeats - a.availableSeats;
+    if (rideSortOrder === "seats-asc") return a.availableSeats - b.availableSeats;
+    const timeA = new Date(`${a.date}T${a.departureTimeStart}`).getTime();
+    const timeB = new Date(`${b.date}T${b.departureTimeStart}`).getTime();
     return rideSortOrder === "time-desc" ? timeB - timeA : timeA - timeB;
   });
 
   const handleRequestRide = (rideId: string) => {
-    const ride = mockRides.find((r) => r.id === rideId);
+    const ride = rides.find((r) => r.id === rideId);
     if (ride) {
       setSelectedRide(ride);
+      setRequestError(null);
       setShowModal(true);
     }
   };
 
-  const handleConfirmRequest = () => {
-    if (selectedRide) {
-      console.log("Solicitar carona:", selectedRide.id);
-      // Implementar lógica de solicitação
+  const handleConfirmRequest = async () => {
+    if (!selectedRide || !currentUser) return;
+    setIsRequesting(true);
+    setRequestError(null);
+
+    try {
+      await rideRequestsService.create(selectedRide.id, currentUser.id);
       setShowModal(false);
       setShowSuccessMessage(true);
+    } catch (error) {
+      setRequestError(
+        error instanceof Error ? error.message : "Erro ao solicitar carona",
+      );
+    } finally {
+      setIsRequesting(false);
     }
   };
 
@@ -419,14 +345,14 @@ export function FindRide() {
 
               <button
                 type="submit"
-                disabled={!origin}
+                disabled={!origin || isSearching}
                 className={`flex-1 py-4 rounded-xl font-semibold transition-all duration-200 ${
                   origin
                     ? "bg-accent text-accent-foreground hover:bg-accent-hover active:scale-[0.98]"
                     : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
               >
-                Buscar caronas
+                {isSearching ? "Buscando..." : "Buscar caronas"}
               </button>
             </div>
           </form>
@@ -509,14 +435,14 @@ export function FindRide() {
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-foreground font-semibold text-lg">
-                  {filteredRides.length} caronas disponíveis
+                  {rides.length} caronas disponíveis
                 </h2>
                 <p className="text-gray-600 text-sm mt-1">
                   {originValue || "Sua origem"} → {destinationValue}
                 </p>
               </div>
 
-              {filteredRides.length > 0 && (
+              {rides.length > 0 && (
                 <label className="flex items-center gap-2 text-sm text-gray-600 sm:justify-end">
                   <span>Ordenar</span>
                   <select
@@ -777,11 +703,17 @@ export function FindRide() {
                 >
                   Cancelar
                 </button>
+
+                {requestError && (
+                  <p className="text-sm text-destructive text-center mt-2">{requestError}</p>
+                )}
+
                 <button
                   onClick={handleConfirmRequest}
+                  disabled={isRequesting}
                   className="px-5 py-2.5 bg-accent text-accent-foreground font-medium text-sm rounded-lg hover:bg-accent-hover transition-colors active:scale-95"
                 >
-                  Confirmar solicitação
+                  {isRequesting ? "Enviando..." : "Confirmar solicitação"}
                 </button>
               </div>
             </div>
