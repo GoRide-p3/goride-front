@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router";
 import { getCurrentUser } from "../utils/auth";
-import { mockRoutes } from "../mocks/routes";
 import type { RouteOption } from "../types/route";
 import { RouteMap } from "./RouteMap";
 import { ridesService } from "../services/rides";
@@ -55,6 +54,7 @@ export function OfferRide() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const googleMapsLoaded = useGoogleMaps();
+  const [calculatedRoutes, setCalculatedRoutes] = useState<RouteOption[]>([]);
 
   const handleSwapLocations = () => {
     setIsReversed(!isReversed);
@@ -113,7 +113,7 @@ export function OfferRide() {
     return;
   }
 
-  const route = mockRoutes.find((r) => r.id === selectedRoute);
+  const route = calculatedRoutes.find((r) => r.id === selectedRoute);
 
   setIsSubmitting(true);
   setSubmitError(null);
@@ -513,9 +513,11 @@ export function OfferRide() {
               {/* Interactive Route Map */}
               <div className="mb-6">
                 <RouteMap
-                  routes={mockRoutes}
+                  origin={originValue}
+                  destination={destinationValue}
                   selectedRoute={selectedRoute}
                   onSelectRoute={setSelectedRoute}
+                  onRoutesLoaded={setCalculatedRoutes}
                 />
               </div>
             </div>
@@ -532,7 +534,12 @@ export function OfferRide() {
 
               {/* Routes List */}
               <div className="space-y-4 mb-6">
-                {mockRoutes.map((route) => (
+                {calculatedRoutes.length === 0 ? (
+                  <div className="flex items-center justify-center h-40">
+                    <p className="text-sm text-gray-500">Calculando rotas...</p>
+                  </div>
+                ) : 
+                  calculatedRoutes.map((route) => (
                   <button
                     key={route.id}
                     onClick={() => setSelectedRoute(route.id)}
