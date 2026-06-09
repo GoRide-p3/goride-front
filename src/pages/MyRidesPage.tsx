@@ -33,6 +33,7 @@ import { formatLocalDate } from "../utils/date";
 import { ridesService } from "../services/rides";
 import { getCurrentUser } from "../utils/auth";
 import { rideRequestsService } from "../services/ride-request";
+import { ratingsService } from "../services/ratings";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -75,6 +76,7 @@ export function MyRides() {
     useState<DirectionFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [rides, setRides] = useState<MyRide[]>([]);
+  const [ridesAsPassenger, setRidesAsPassenger] = useState<MyRideAsPassenger[]>([]);
   const [loading, setLoading] = useState(true);
   const currentUser = getCurrentUser();
 
@@ -154,6 +156,7 @@ export function MyRides() {
       .then((data) => {
         const mapped: MyRideAsPassenger[] = data.map((request: any) => ({
           id: request.id,
+          rideId: request.ride.id,
           origin: request.ride.origin,
           destination: request.ride.destination,
           date: request.ride.date,
@@ -188,7 +191,6 @@ export function MyRides() {
       .catch(console.error);
   }, []);
 
-  const [ridesAsPassenger, setRidesAsPassenger] = useState<MyRideAsPassenger[]>([]);
   const [selectedRide, setSelectedRide] = useState<MyRide | null>(null);
   const [selectedPassengerRide, setSelectedPassengerRide] =
     useState<MyRideAsPassenger | null>(null);
@@ -386,17 +388,45 @@ export function MyRides() {
     setRatingModalOpen(true);
   };
 
-  const handleSubmitRating = (
+  const handleSubmitRating = async (
     rating: number,
     comment: string,
     reportReason?: string,
   ) => {
-    console.log("Avaliação submetida:", {
-      rating,
-      comment,
-      user: currentRatingUser,
-      reportReason,
-    });
+    if (!currentUser || !currentRatingUser) {
+      setRatingSuccessText("Nao foi possivel enviar a avaliacao.");
+      setShowRatingSuccess(true);
+      return;
+    }
+
+    const rideId =
+      selectedRide?.id ?? selectedPassengerRide?.rideId ?? selectedPassengerRide?.id;
+    if (!rideId) {
+      setRatingSuccessText("Nao foi possivel encontrar a carona avaliada.");
+      setShowRatingSuccess(true);
+      return;
+    }
+
+    const finalComment = reportReason
+      ? comment
+        ? `${comment}\nDenuncia: ${reportReason}`
+        : `Denuncia: ${reportReason}`
+      : comment;
+
+    try {
+      await ratingsService.create({
+        fromUserId: currentUser.id,
+        toUserId: currentRatingUser.id,
+        rideId,
+        rating,
+        comment: finalComment,
+      });
+    } catch (error) {
+      console.error("Erro ao enviar avaliacao:", error);
+      setRatingSuccessText("Erro ao enviar avaliacao. Tente novamente.");
+      setShowRatingSuccess(true);
+      return;
+    }
 
     // MOTORISTA avaliando passageiros
     if (modalType === "complete" && selectedRide) {
@@ -1278,7 +1308,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                           className="w-full p-3 bg-accent text-accent-foreground font-medium rounded-lg hover:bg-accent-hover transition-colors flex items-center justify-center gap-2"
                         >
                           <CheckCircle2 className="w-5 h-5" />
-                          Concluir carona
+                          Avaliar motorista
                         </button>
                       </div>
                     )}

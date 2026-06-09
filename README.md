@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# GoRide
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicacao do GoRide com frontend em React e backend em Node.js dentro do mesmo
+repositorio.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Frontend: React, TypeScript, Vite e Tailwind
+- Backend: Node.js, Express, TypeScript, Prisma e SQLite
+- Validacao: Zod
+- Autenticacao: bcrypt para senha e JWT para token
 
-## React Compiler
+## Estrutura
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```txt
+src/       -> frontend
+backend/   -> API do GoRide
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+O frontend consome a API configurada em `VITE_API_URL`. Para desenvolvimento
+local, use:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_API_URL=http://localhost:3000
 ```
+
+## Rodando o frontend
+
+```bash
+npm install
+npm run dev
+```
+
+O frontend roda por padrao em:
+
+```txt
+http://localhost:5173
+```
+
+## Rodando o backend
+
+```bash
+npm run backend:install
+npm run backend:prisma:migrate
+npm run backend:prisma:generate
+npm run backend:dev
+```
+
+A API roda por padrao em:
+
+```txt
+http://localhost:3000
+```
+
+## Observacao sobre dados
+
+O projeto nao usa seed nem dados mockados no codigo. Para testar o fluxo, crie
+usuarios e caronas pela propria aplicacao ou pelas rotas da API.
