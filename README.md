@@ -51,8 +51,3 @@ A API roda por padrao em:
 ```txt
 http://localhost:3000
 ```
-
-## Observacao sobre dados
-
-O projeto nao usa seed nem dados mockados no codigo. Para testar o fluxo, crie
-usuarios e caronas pela propria aplicacao ou pelas rotas da API.
