@@ -47,6 +47,7 @@ export interface MyRide {
 // Tipo para caronas solicitadas (como passageiro)
 export interface MyRideAsPassenger {
   id: string;
+  rideId?: string;
   origin: string;
   destination: string;
   date: string;

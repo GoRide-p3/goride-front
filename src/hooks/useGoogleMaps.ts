@@ -6,6 +6,11 @@ export function useGoogleMaps() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    const hasValidKey =
+      GOOGLE_MAPS_API_KEY && GOOGLE_MAPS_API_KEY !== "chave_aqui";
+
+    if (!hasValidKey) return;
+
     if (window.google?.maps) {
       setLoaded(true);
       return;
@@ -22,6 +27,7 @@ export function useGoogleMaps() {
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=pt-BR`;
     script.async = true;
     script.onload = () => setLoaded(true);
+    script.onerror = () => setLoaded(false);
     document.head.appendChild(script);
   }, []);
 

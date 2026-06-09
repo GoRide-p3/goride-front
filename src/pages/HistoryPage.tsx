@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   Menu,
   ChevronDown,
@@ -17,12 +17,13 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router";
-import { mockHistoryAsPassenger, mockHistoryAsDriver } from "../mocks/history";
 import type {
   HistoryRideAsPassenger,
   HistoryRideAsDriver,
 } from "../types/history";
 import { formatLocalDate } from "../utils/date";
+import { getCurrentUser } from "../utils/auth";
+import { ridesService } from "../services/rides";
 
 // — Types —
 
@@ -34,14 +35,33 @@ interface LayoutContext {
 
 type TabType = "offered" | "received";
 type SortOrder = "recent" | "oldest";
-type StatusFilter = "all" | "completed" | "cancelled";
+type HistoryStatus = "active" | "completed" | "cancelled";
+type StatusFilter = "all" | HistoryStatus;
 type DirectionFilter = "all" | "to-ufal" | "from-ufal";
+
+function EmptyState({
+  icon,
+  message,
+}: {
+  icon: ReactNode;
+  message: string;
+}) {
+  return (
+    <div className="bg-background rounded-2xl p-8 text-center shadow-sm border border-gray-100">
+      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        {icon}
+      </div>
+      <p className="text-foreground font-medium">{message}</p>
+    </div>
+  );
+}
 
 // — Component —
 
 export function History() {
   const navigate = useNavigate();
   const { setSidebarOpen } = useOutletContext<LayoutContext>();
+  const currentUser = getCurrentUser();
 
   // Tab
   const [activeTab, setActiveTab] = useState<TabType>("offered");
@@ -53,6 +73,12 @@ export function History() {
   const [directionFilter, setDirectionFilter] =
     useState<DirectionFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [driverHistory, setDriverHistory] = useState<HistoryRideAsDriver[]>([]);
+  const [passengerHistory, setPassengerHistory] = useState<
+    HistoryRideAsPassenger[]
+  >([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [historyError, setHistoryError] = useState("");
 
   // Modal
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -63,6 +89,79 @@ export function History() {
 
   // Passengers accordion
   const [showPassengers, setShowPassengers] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setDriverHistory([]);
+      setPassengerHistory([]);
+      setLoadingHistory(false);
+      return;
+    }
+
+    setLoadingHistory(true);
+    setHistoryError("");
+
+    ridesService
+      .history(currentUser.id)
+      .then((history) => {
+        setDriverHistory(
+          history.offered.map((ride) => ({
+            id: ride.id,
+            date: ride.date,
+            departureTimeStart: ride.departureTimeStart,
+            departureTimeEnd: ride.departureTimeEnd,
+            origin: ride.origin,
+            destination: ride.destination,
+            route: {
+              name: ride.routeName ?? "Rota",
+              distance: "-",
+              duration: "-",
+              waypoints: [ride.origin, ride.destination],
+            },
+            price: ride.price,
+            totalSeats: ride.totalSeats,
+            passengers: [],
+            sameGenderOnly: ride.sameGenderOnly,
+            status: ride.status,
+          })),
+        );
+
+        setPassengerHistory(
+          history.requested.map(({ ride }) => ({
+            id: ride.id,
+            date: ride.date,
+            departureTimeStart: ride.departureTimeStart,
+            departureTimeEnd: ride.departureTimeEnd,
+            origin: ride.origin,
+            destination: ride.destination,
+            driver: {
+              id: ride.driver?.id,
+              name: ride.driver?.name ?? "Motorista",
+              rating: ride.driver?.rating ?? 0,
+              totalRatings: ride.driver?.totalRatings ?? 0,
+              gender: ride.driver?.gender ?? "",
+              phone: "",
+            },
+            price: ride.price,
+            otherPassengers: [],
+            sameGenderOnly: ride.sameGenderOnly,
+            route: {
+              name: ride.routeName ?? "Rota",
+              distance: "-",
+              duration: "-",
+              waypoints: [ride.origin, ride.destination],
+            },
+            status: ride.status,
+          })),
+        );
+      })
+      .catch((error) => {
+        setHistoryError(
+          error instanceof Error ? error.message : "Erro ao carregar historico",
+        );
+      })
+      .finally(() => setLoadingHistory(false));
+  }, [currentUser?.id]);
 
   // — Helpers —
 
@@ -116,7 +215,7 @@ export function History() {
       destination: string;
       departureTimeStart: string;
       sameGenderOnly: boolean;
-      status: "completed" | "cancelled";
+      status: HistoryStatus;
     },
   >(
     rideList: Ride[],
@@ -157,10 +256,10 @@ export function History() {
     });
 
   const sortedDriverRides = sortHistoryRides(
-    filterHistoryRides(mockHistoryAsDriver),
+    filterHistoryRides(driverHistory),
   );
   const sortedPassengerRides = sortHistoryRides(
-    filterHistoryRides(mockHistoryAsPassenger),
+    filterHistoryRides(passengerHistory),
   );
 
   // — Handlers —
@@ -232,9 +331,23 @@ export function History() {
             </button>
           </div>
 
-          {(activeTab === "offered"
-            ? mockHistoryAsDriver.length
-            : mockHistoryAsPassenger.length) > 0 && (
+          {loadingHistory && (
+            <div className="bg-background rounded-2xl p-8 text-center shadow-sm border border-gray-100">
+              <p className="text-muted-foreground">Carregando historico...</p>
+            </div>
+          )}
+
+          {historyError && (
+            <div className="bg-background rounded-2xl p-8 text-center shadow-sm border border-gray-100">
+              <p className="text-destructive">{historyError}</p>
+            </div>
+          )}
+
+          {!loadingHistory &&
+            !historyError &&
+            (activeTab === "offered"
+              ? driverHistory.length
+              : passengerHistory.length) > 0 && (
             <div className="mb-4 space-y-3">
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <button
@@ -286,6 +399,7 @@ export function History() {
                         className="w-full rounded-lg border border-gray-200 bg-background px-3 py-2 text-sm text-gray-700 outline-none transition-colors hover:border-gray-300 focus:border-primary"
                       >
                         <option value="all">Todas</option>
+                        <option value="active">Em andamento</option>
                         <option value="completed">Concluídas</option>
                         <option value="cancelled">Canceladas</option>
                       </select>
@@ -379,7 +493,7 @@ export function History() {
           {/* Tab: Caronas oferecidas (motorista) */}
           {activeTab === "offered" && (
             <div className="space-y-4">
-              {mockHistoryAsDriver.length === 0 ? (
+              {driverHistory.length === 0 ? (
                 <EmptyState
                   icon={<Car className="w-8 h-8 text-gray-400" />}
                   message="Você ainda não ofereceu nenhuma carona"
@@ -407,6 +521,7 @@ export function History() {
                     timeStart={ride.departureTimeStart}
                     timeEnd={ride.departureTimeEnd}
                     sameGenderOnly={ride.sameGenderOnly}
+                    status={ride.status}
                     onClick={() => handleDriverRideClick(ride)}
                   />
                 ))
@@ -417,7 +532,7 @@ export function History() {
           {/* Tab: Caronas solicitadas (passageiro) */}
           {activeTab === "received" && (
             <div className="space-y-4">
-              {mockHistoryAsPassenger.length === 0 ? (
+              {passengerHistory.length === 0 ? (
                 <EmptyState
                   icon={<Users className="w-8 h-8 text-gray-400" />}
                   message="Você ainda não pegou nenhuma carona"
@@ -445,6 +560,7 @@ export function History() {
                     timeStart={ride.departureTimeStart}
                     timeEnd={ride.departureTimeEnd}
                     sameGenderOnly={ride.sameGenderOnly}
+                    status={ride.status}
                     onClick={() => handlePassengerRideClick(ride)}
                   />
                 ))
@@ -467,7 +583,7 @@ export function History() {
             </div>
 
             {/* Detalhes: motorista */}
-            {activeTab === "offered" && selectedDriverRide && (
+          {activeTab === "offered" && selectedDriverRide && (
               <DriverRideDetails
                 ride={selectedDriverRide}
                 formatDate={formatDate}
@@ -502,6 +618,7 @@ function RideCard({
   timeStart,
   timeEnd,
   sameGenderOnly,
+  status,
   onClick,
 }: {
   date: string;
@@ -510,8 +627,24 @@ function RideCard({
   timeStart: string;
   timeEnd: string;
   sameGenderOnly: boolean;
+  status: HistoryStatus;
   onClick: () => void;
 }) {
+  const statusInfo = {
+    active: {
+      label: "Em andamento",
+      className: "bg-info text-info-foreground",
+    },
+    completed: {
+      label: "Concluida",
+      className: "bg-success text-success-foreground",
+    },
+    cancelled: {
+      label: "Cancelada",
+      className: "bg-destructive-muted text-destructive",
+    },
+  }[status];
+
   return (
     <button
       onClick={onClick}
@@ -525,8 +658,10 @@ function RideCard({
             Mesmo gênero
           </span>
         )}
-        <span className="px-2 py-0.5 bg-success text-success-foreground text-xs font-medium rounded-full">
-          Concluída
+        <span
+          className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusInfo.className}`}
+        >
+          {statusInfo.label}
         </span>
       </div>
 
@@ -764,7 +899,7 @@ function PassengerRideDetails({
           Motorista
         </p>
         <button
-          onClick={() => navigate(`/user/${ride.driver.id}`)}
+          onClick={() => ride.driver.id && navigate(`/user/${ride.driver.id}`)}
           className="w-full flex items-center gap-3 text-left hover:bg-primary/10 p-2 rounded-xl transition"
         >
           <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center">

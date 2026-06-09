@@ -26,6 +26,7 @@ import { getCurrentUser, updateCurrentUser } from "../utils/auth";
 import { formatLocalDate, parseLocalDate } from "../utils/date";
 import type { SavedAddress } from "../types/user";
 import { userService } from "../services/user";
+import { authService } from "../services/auth";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -36,20 +37,27 @@ interface LayoutContext {
 export function Settings() {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
-
-  if (!currentUser) {
-    navigate("/");
-    return null;
-  }
   const { setSidebarOpen } = useOutletContext<LayoutContext>();
+  const profile = currentUser ?? {
+    id: "",
+    name: "",
+    email: "",
+    phone: "",
+    pix: "",
+    bio: "",
+    birthDate: "",
+    gender: "",
+    privateMode: false,
+    savedAddresses: [],
+  };
 
-  const [email, setEmail] = useState(currentUser.email);
-  const [phone, setPhone] = useState(currentUser.phone || "");
-  const [pix, setPix] = useState(currentUser.pix || "");
-  const [name, setName] = useState(currentUser.name);
-  const [bio, setBio] = useState(currentUser.bio || "");
-  const [birthDate, setBirthDate] = useState(currentUser.birthDate ?? "");
-  const [gender, setGender] = useState(currentUser.gender);
+  const [email, setEmail] = useState(profile.email);
+  const [phone, setPhone] = useState(profile.phone || "");
+  const [pix, setPix] = useState(profile.pix || "");
+  const [name, setName] = useState(profile.name);
+  const [bio, setBio] = useState(profile.bio || "");
+  const [birthDate, setBirthDate] = useState(profile.birthDate ?? "");
+  const [gender, setGender] = useState(profile.gender);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -58,9 +66,10 @@ export function Settings() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const [privateMode, setPrivateMode] = useState(
-    currentUser.privateMode || false,
+    profile.privateMode || false,
   );
   const [savedMessage, setSavedMessage] = useState(false);
 
@@ -68,14 +77,20 @@ export function Settings() {
   const [isEditingAccount, setIsEditingAccount] = useState(false);
 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>(
-    currentUser.savedAddresses || [],
+    profile.savedAddresses || [],
   );
+
   const [addressToDelete, setAddressToDelete] = useState<SavedAddress | null>(
     null,
   );
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [newAddressLabel, setNewAddressLabel] = useState("");
   const [newAddressValue, setNewAddressValue] = useState("");
+
+  if (!currentUser) {
+    navigate("/");
+    return null;
+  }
 
   const handleSaveProfile = async () => {
   try {
@@ -85,8 +100,6 @@ export function Settings() {
       birthDate: birthDate ?? undefined,
       gender,
     });
-    console.log("Retorno da API:", updated); // <- adicione
-    console.log("Bio no retorno:", updated.bio); // <- adicione
     updateCurrentUser(updated);
     setIsEditingProfile(false);
     setSavedMessage(true);
@@ -120,7 +133,7 @@ export function Settings() {
       privateMode: nextPrivateMode,
     });
     updateCurrentUser(updated);
-  } catch (error) {
+  } catch {
     setPrivateMode(!nextPrivateMode);
     alert("Erro ao atualizar modo privado");
   }
@@ -172,13 +185,25 @@ export function Settings() {
     alert("A nova senha deve ter pelo menos 6 caracteres");
     return;
   }
-  // TODO: implementar endpoint PATCH /auth/change-password
-  console.log("Alterar senha — endpoint pendente");
-  setCurrentPassword("");
-  setNewPassword("");
-  setConfirmPassword("");
-  setSavedMessage(true);
-  setTimeout(() => setSavedMessage(false), 3000);
+  setChangingPassword(true);
+
+  try {
+    await authService.changePassword({
+      currentPassword,
+      newPassword,
+    });
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setSavedMessage(true);
+    setTimeout(() => setSavedMessage(false), 3000);
+  } catch (error) {
+    alert(error instanceof Error ? error.message : "Erro ao alterar senha");
+  } finally {
+    setChangingPassword(false);
+  }
+
 };
 
   const calculateAge = (birthDate: string | null) => {
@@ -299,7 +324,7 @@ export function Settings() {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-        {false && (
+        {savedMessage && (
           <div className="bg-success border border-success-border rounded-xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 bg-success-foreground rounded-full flex items-center justify-center">
               <Save className="w-5 h-5 text-primary-foreground" />
@@ -865,15 +890,20 @@ export function Settings() {
 
           <button
             onClick={handleChangePassword}
-            disabled={!currentPassword || !newPassword || !confirmPassword}
+            disabled={
+              changingPassword ||
+              !currentPassword ||
+              !newPassword ||
+              !confirmPassword
+            }
             className={`w-full mt-6 py-3 font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 ${
-              currentPassword && newPassword && confirmPassword
+              !changingPassword && currentPassword && newPassword && confirmPassword
                 ? "bg-accent text-accent-foreground hover:bg-accent-hover"
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             }`}
           >
             <Lock className="w-5 h-5" />
-            Alterar Senha
+            {changingPassword ? "Alterando..." : "Alterar Senha"}
           </button>
         </div>
       </div>

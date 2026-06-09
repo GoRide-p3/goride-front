@@ -10,10 +10,10 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams, useOutletContext } from "react-router";
 import { useState, useEffect } from "react";
-import type { User } from "../types/user";
-import { mockUsers } from "../mocks/user";
+import type { AuthUser } from "../services/auth";
 import { getCurrentUser } from "../utils/auth";
-import { formatLocalDate, parseLocalDate } from "../utils/date";
+import { userService } from "../services/user";
+import { formatISODate, parseLocalDate } from "../utils/date";
 
 export function PublicProfile() {
   const navigate = useNavigate();
@@ -21,21 +21,42 @@ export function PublicProfile() {
     setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   }>();
   const { userId } = useParams<{ userId: string }>();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Buscar usuário pelo ID
-    if (userId) {
-      const currentUser = getCurrentUser();
-      const foundUser =
-        currentUser?.id === userId
-          ? currentUser
-          : mockUsers.find((u) => u.id === userId);
-      setUser(foundUser || null);
+    if (!userId) {
+      setLoading(false);
+      return;
     }
+
+    const currentUser = getCurrentUser();
+
+    if (currentUser?.id === userId) {
+      setUser(currentUser);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    userService
+      .getById(userId)
+      .then(setUser)
+      .catch((error) => {
+        setError(
+          error instanceof Error ? error.message : "Erro ao carregar perfil",
+        );
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, [userId]);
 
-  const calculateAge = (birthDate: string) => {
+  const calculateAge = (birthDate: string | null | undefined) => {
+    if (!birthDate) return null;
+
     const birth = parseLocalDate(birthDate);
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
@@ -49,6 +70,17 @@ export function PublicProfile() {
     return age;
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen bg-[#F5F5F5] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm">Carregando perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="h-screen bg-[#F5F5F5] flex items-center justify-center">
@@ -60,7 +92,7 @@ export function PublicProfile() {
             Usuário não encontrado
           </h3>
           <p className="text-gray-600 text-sm mb-6">
-            O perfil que você está procurando não existe.
+            {error || "O perfil que você está procurando não existe."}
           </p>
           <button
             onClick={() => navigate(-1)}
@@ -192,7 +224,7 @@ export function PublicProfile() {
               </div>
 
               {/* Age - Hidden if private mode */}
-              {!user.privateMode && (
+              {!user.privateMode && user.birthDate && (
                 <div className="bg-[#F5F5F5] rounded-xl p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
@@ -259,10 +291,12 @@ export function PublicProfile() {
                       Membro desde
                     </p>
                     <p className="text-base font-semibold text-foreground">
-                      {formatLocalDate(user.birthDate, {
-                        month: "long",
-                        year: "numeric",
-                      })}
+                      {user.createdAt
+                        ? formatISODate(user.createdAt, {
+                            month: "long",
+                            year: "numeric",
+                          })
+                        : "-"}
                     </p>
                   </div>
                 </div>

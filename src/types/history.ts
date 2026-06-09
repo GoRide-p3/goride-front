@@ -6,6 +6,7 @@ export interface HistoryRideAsPassenger {
   origin: string;
   destination: string;
   driver: {
+    id?: string;
     name: string;
     rating: number;
     totalRatings: number;
@@ -26,7 +27,7 @@ export interface HistoryRideAsPassenger {
     duration: string;
     waypoints: string[];
   };
-  status: 'completed' | 'cancelled';
+  status: "active" | "completed" | "cancelled";
 }
 export interface HistoryRideAsDriver {
   id: string;
@@ -50,5 +51,5 @@ export interface HistoryRideAsDriver {
     gender: string;
   }[];
   sameGenderOnly: boolean;
-  status: 'completed' | 'cancelled';
+  status: "active" | "completed" | "cancelled";
 }

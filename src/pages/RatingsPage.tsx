@@ -8,10 +8,10 @@ import {
 import { useNavigate, useParams, useOutletContext } from "react-router";
 import { useState, useEffect } from "react";
 import type { Rating } from "../types/rating";
-import { getRatingsByUserId } from "../mocks/ratings";
-import { mockUsers } from "../mocks/user";
-import { formatLocalDate } from "../utils/date";
+import { formatISODate } from "../utils/date";
 import { getCurrentUser } from "../utils/auth";
+import { ratingsService } from "../services/ratings";
+import { userService } from "../services/user";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -25,23 +25,62 @@ export function RatingsPage() {
   const { setSidebarOpen } = useOutletContext<LayoutContext>();
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [userName, setUserName] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"passenger" | "driver">(
     "passenger",
   );
 
   useEffect(() => {
-    const profileUser = userId
-      ? mockUsers.find((user) => user.id === userId)
-      : (getCurrentUser() ?? mockUsers[0]);
+    const currentUser = getCurrentUser();
+    const profileUserId = userId ?? currentUser?.id;
 
-    if (!profileUser) {
+    if (!profileUserId) {
       setRatings([]);
-      setUserName("");
+      setUserName("Usuario");
+      setLoading(false);
       return;
     }
 
-    setRatings(getRatingsByUserId(profileUser.id));
-    setUserName(profileUser.name);
+    setLoading(true);
+    setError("");
+
+    Promise.all([
+      userService.getById(profileUserId),
+      ratingsService.listByUser(profileUserId),
+    ])
+      .then(([profileUser, apiRatings]) => {
+        const mappedRatings: Rating[] = apiRatings.map((rating) => ({
+          id: rating.id,
+          raterId: rating.fromUser?.id ?? "",
+          raterName: rating.fromUser?.name ?? "Usuario",
+          ratedUserId: profileUserId,
+          rating: rating.rating,
+          comment: rating.comment ?? "",
+          rideId: rating.ride?.id ?? "",
+          createdAt: rating.createdAt,
+          role:
+            rating.ride?.driverId === profileUserId ? "driver" : "passenger",
+        }));
+
+        setUserName(profileUser.name);
+        setRatings(mappedRatings);
+
+        if (
+          mappedRatings.some((rating) => rating.role === "driver") &&
+          !mappedRatings.some((rating) => rating.role === "passenger")
+        ) {
+          setActiveTab("driver");
+        } else {
+          setActiveTab("passenger");
+        }
+      })
+      .catch((error) => {
+        setError(
+          error instanceof Error ? error.message : "Erro ao carregar avaliacoes",
+        );
+      })
+      .finally(() => setLoading(false));
   }, [userId]);
 
   const renderStars = (rating: number) => {
@@ -77,7 +116,7 @@ export function RatingsPage() {
   };
 
   const formatDate = (dateString: string) =>
-    formatLocalDate(dateString, {
+    formatISODate(dateString, {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -139,8 +178,21 @@ export function RatingsPage() {
           </div>
         </div>
 
+        {loading && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+            <p className="text-sm text-gray-500">Carregando avaliacoes...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 bg-background rounded-xl p-1 shadow-sm">
+        {!loading && !error && (
+          <div className="flex gap-2 mb-6 bg-background rounded-xl p-1 shadow-sm">
           <button
             onClick={() => setActiveTab("passenger")}
             className={`flex-1 py-3 rounded-lg font-medium text-sm transition-all ${
@@ -161,9 +213,10 @@ export function RatingsPage() {
           >
             Como motorista
           </button>
-        </div>
+          </div>
+        )}
 
-        {activeRatings.length > 0 && (
+        {!loading && !error && activeRatings.length > 0 && (
           <div className="space-y-4">
             {activeRatings.map((rating) => (
               <div
@@ -204,7 +257,7 @@ export function RatingsPage() {
           </div>
         )}
 
-        {ratings.length > 0 && activeRatings.length === 0 && (
+        {!loading && !error && ratings.length > 0 && activeRatings.length === 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Star className="w-8 h-8 text-gray-400" />
@@ -220,7 +273,7 @@ export function RatingsPage() {
         )}
 
         {/* No Ratings */}
-        {ratings.length === 0 && (
+        {!loading && !error && ratings.length === 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Star className="w-8 h-8 text-gray-400" />

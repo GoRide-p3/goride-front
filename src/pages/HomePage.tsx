@@ -1,4 +1,4 @@
-import { Menu, ArrowLeft, MapPin, Users, Car } from "lucide-react";
+import { Menu, MapPin, Users, Car } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router";
 import { getCurrentUser } from "../utils/auth";
 

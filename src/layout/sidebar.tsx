@@ -1,5 +1,4 @@
 import {
-  Menu,
   User,
   History,
   Settings,
@@ -26,6 +25,7 @@ export function Sidebar({
   onToggleCollapse,
 }: SidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const currentUser = getCurrentUser();
 
   const handleLogout = () => {

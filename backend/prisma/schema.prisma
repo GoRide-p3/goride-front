@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  cpf          String   @unique
+  phone        String?
+  gender       String
+  birthDate    String?
+  passwordHash String
+  bio          String?
+  pix          String?
+  avatar       String?
+  privateMode   Boolean  @default(false)
+  emailVerified Boolean @default(false)
+  rating       Float    @default(0)
+  totalRatings Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rides Ride[]
+  rideRequests RideRequest[]
+  ratingsGiven Rating[] @relation("RatingsGiven")
+  ratingsReceived Rating[] @relation("RatingsReceived")
+}
+
+model Ride {
+  id                 String   @id @default(uuid())
+  driverId           String
+  origin             String
+  destination        String
+  date               String
+  departureTimeStart String
+  departureTimeEnd   String
+  price              Float
+  totalSeats         Int
+  availableSeats     Int
+  routeId            String?
+  routeName          String?
+  sameGenderOnly     Boolean  @default(false)
+  status             String   @default("active")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  driver User @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  requests RideRequest[]
+  ratings Rating[]
+
+  @@index([driverId])
+  @@index([date])
+  @@index([status])
+  @@index([origin, destination, date])
+}
+
+model RideRequest {
+  id          String   @id @default(uuid())
+  rideId      String
+  passengerId String
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ride      Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  passenger User @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+
+  @@unique([rideId, passengerId])
+  @@index([rideId])
+  @@index([passengerId])
+  @@index([status])
+}
+
+model Rating {
+  id         String   @id @default(uuid())
+  fromUserId String
+  toUserId   String
+  rideId     String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("RatingsGiven", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("RatingsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  ride     Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId, rideId])
+  @@index([toUserId])
+  @@index([rideId])
+}

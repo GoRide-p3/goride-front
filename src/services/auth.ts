@@ -23,6 +23,11 @@ export interface AuthResponse {
   token: string;
 }
 
+export interface ForgotPasswordResponse {
+  message: string;
+  resetToken?: string;
+}
+
 export const authService = {
   register: (data: {
     name: string;
@@ -41,6 +46,24 @@ export const authService = {
   login: (data: { email: string; password: string }) =>
     apiFetch<AuthResponse>("/auth/login", {
       method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  forgotPassword: (data: { email: string }) =>
+    apiFetch<ForgotPasswordResponse>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  resetPassword: (data: { token: string; password: string }) =>
+    apiFetch<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    apiFetch<{ message: string }>("/auth/change-password", {
+      method: "PATCH",
       body: JSON.stringify(data),
     }),
 };
