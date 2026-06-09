@@ -22,6 +22,7 @@ import { useGoogleMaps } from "../hooks/useGoogleMaps";
 import { PlacesAutocomplete } from "../components/PlacesAutocomplete";
 import { rideRequestsService } from "../services/ride-request";
 import { ridesService } from "../services/rides";
+import { geocodeAddress } from "../utils/geocoding";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -30,6 +31,7 @@ interface LayoutContext {
 }
 
 type RideSortOrder =
+  | "proximity"
   | "time-asc"
   | "time-desc"
   | "price-asc"
@@ -56,7 +58,7 @@ export function FindRide() {
   const [showModal, setShowModal] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [showSavedAddresses, setShowSavedAddresses] = useState(false);
-  const [rideSortOrder, setRideSortOrder] = useState<RideSortOrder>("time-asc");
+  const [rideSortOrder, setRideSortOrder] = useState<RideSortOrder>("proximity");
   const [rides, setRides] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
@@ -93,7 +95,14 @@ export function FindRide() {
       if (sameGenderOnly) params.sameGenderOnly = "true";
       params.status = "active";
 
+    const coords = await geocodeAddress(originValue);
+    if (coords) {
+      params.passengerLat = String(coords.lat);
+      params.passengerLng = String(coords.lng);
+    }
+
       const data = await ridesService.list(params);
+      console.log("Primeira carona:", data[0]);
       setRides(data);
       setShowResults(true);
     } catch (error) {
@@ -123,14 +132,22 @@ export function FindRide() {
     });
 
   const sortedRides = [...rides].sort((a, b) => {
-    if (rideSortOrder === "price-asc") return a.price - b.price;
-    if (rideSortOrder === "price-desc") return b.price - a.price;
-    if (rideSortOrder === "seats-desc") return b.availableSeats - a.availableSeats;
-    if (rideSortOrder === "seats-asc") return a.availableSeats - b.availableSeats;
-    const timeA = new Date(`${a.date}T${a.departureTimeStart}`).getTime();
-    const timeB = new Date(`${b.date}T${b.departureTimeStart}`).getTime();
-    return rideSortOrder === "time-desc" ? timeB - timeA : timeA - timeB;
-  });
+  if (rideSortOrder === "proximity") {
+    if (a.isNearby && !b.isNearby) return -1;
+    if (!a.isNearby && b.isNearby) return 1;
+    if (a.proximityMeters !== null && b.proximityMeters !== null) {
+      return a.proximityMeters - b.proximityMeters;
+    }
+    return 0;
+  }
+  if (rideSortOrder === "price-asc") return a.price - b.price;
+  if (rideSortOrder === "price-desc") return b.price - a.price;
+  if (rideSortOrder === "seats-desc") return b.availableSeats - a.availableSeats;
+  if (rideSortOrder === "seats-asc") return a.availableSeats - b.availableSeats;
+  const timeA = new Date(`${a.date}T${a.departureTimeStart}`).getTime();
+  const timeB = new Date(`${b.date}T${b.departureTimeStart}`).getTime();
+  return rideSortOrder === "time-desc" ? timeB - timeA : timeA - timeB;
+});
 
   const handleRequestRide = (rideId: string) => {
     const ride = rides.find((r) => r.id === rideId);
@@ -452,6 +469,7 @@ export function FindRide() {
                     }
                     className="rounded-lg border border-gray-200 bg-background px-3 py-2 text-sm text-gray-700 shadow-sm outline-none transition-colors hover:border-gray-300 focus:border-primary"
                   >
+                    <option value="proximity">Mais próximas</option>
                     <option value="time-asc">Mais cedo</option>
                     <option value="time-desc">Mais tarde</option>
                     <option value="price-asc">Menor preço</option>
@@ -529,6 +547,22 @@ export function FindRide() {
                         {formatRideDate(ride.date)}
                       </span>
                     </div>
+
+                  {/* Badge proximity */}
+                  {ride.isNearby && (
+                    <div className="mb-3">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-success text-success-foreground text-xs font-medium rounded-full">
+                        <MapPin className="w-3 h-3" />
+                        Próxima de você
+                        {ride.proximityMeters !== null && (
+                          <span className="opacity-75">
+                            · {Math.round(ride.proximityMeters)}m
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+
                     {/* Route Info */}
                     <div className="mb-4 space-y-2">
                       <div className="flex items-center gap-3">
