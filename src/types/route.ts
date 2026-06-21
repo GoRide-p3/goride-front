@@ -10,4 +10,5 @@ export interface RouteOption {
   isShortest: boolean;
   description: string;
   waypoints: string[];
+  polyline: string;
 }

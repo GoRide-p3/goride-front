@@ -130,6 +130,7 @@ export function OfferRide() {
       totalSeats: Number(seats),
       routeId: selectedRoute,
       routeName: route?.name ?? "Nova rota",
+      routePolyline: route?.polyline,
       sameGenderOnly,
     });
 

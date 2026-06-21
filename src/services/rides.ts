@@ -11,6 +11,7 @@ export interface CreateRidePayload {
   totalSeats: number;
   routeId?: string;
   routeName?: string;
+  routePolyline?: string;
   sameGenderOnly: boolean;
 }
 
