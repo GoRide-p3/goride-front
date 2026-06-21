@@ -1,26 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigation, MapPin } from "lucide-react";
-
-interface RouteResult {
-  id: string;
-  name: string;
-  distance: string;
-  duration: string;
-  durationSeconds: number;
-  distanceMeters: number;
-  traffic: "light" | "moderate" | "heavy";
-  isFastest: boolean;
-  isShortest: boolean;
-  description: string;
-  waypoints: string[];
-}
+import type { RouteOption } from "../types/route"; 
 
 interface RouteMapProps {
   origin: string;
   destination: string;
   selectedRoute: string | null;
   onSelectRoute: (routeId: string) => void;
-  onRoutesLoaded: (routes: RouteResult[]) => void;
+  onRoutesLoaded: (routes: RouteOption[]) => void;
 }
 
 const ROUTE_COLORS = ["#10B981", "#3B82F6", "#8B5CF6"];
@@ -38,7 +25,7 @@ export function RouteMap({
   const renderersRef = useRef<google.maps.DirectionsRenderer[]>([]);
   const clickPolylinesRef = useRef<google.maps.Polyline[]>([]);
   const visualPolylinesRef = useRef<google.maps.Polyline[]>([]); 
-  const [routes, setRoutes] = useState<RouteResult[]>([]);
+  const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,7 +68,7 @@ export function RouteMap({
         clickPolylinesRef.current = [];
         visualPolylinesRef.current = []; 
 
-        const calculated: RouteResult[] = result.routes
+        const calculated: RouteOption[] = result.routes
           .slice(0, 3)
           .map((route, index) => {
             const leg = route.legs[0];
@@ -89,6 +76,7 @@ export function RouteMap({
             const distanceMeters = leg.distance?.value ?? 0;
             const routeId = `route-${index}`;
             const path = route.overview_path;
+            const polyline = route.overview_polyline;
 
             const renderer = new window.google.maps.DirectionsRenderer({
               map: mapInstanceRef.current,
@@ -189,6 +177,7 @@ export function RouteMap({
               isShortest: false,
               description: route.summary ?? "",
               waypoints,
+              polyline,
             };
           });
 
