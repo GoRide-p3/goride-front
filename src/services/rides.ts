@@ -40,6 +40,9 @@ export interface RideHistoryResponse {
 }
 
 export const ridesService = {
+  geocode: (address: string) =>
+    apiFetch<{ lat: number; lng: number }>(`/geocode?address=${encodeURIComponent(address)}`),
+
   create: (data: CreateRidePayload) =>
     apiFetch<Ride>("/rides", {
       method: "POST",

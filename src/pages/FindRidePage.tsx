@@ -83,6 +83,18 @@ export function FindRide() {
     setShowResults(false);
 
     try {
+      let passengerLat: number | undefined;
+      let passengerLng: number | undefined;
+      if (originValue) {
+        try {
+          const coords = await ridesService.geocode(originValue);
+          passengerLat = coords.lat;
+          passengerLng = coords.lng;
+          console.log(`[SEARCH] Geocodificado: ${originValue} → (${passengerLat}, ${passengerLng})`);
+          } catch (error) {
+            console.error("[SEARCH] Falha ao geocodificar origem:", error);
+          }
+        }
       const params: Record<string, string> = {};
       if (originValue) params.origin = originValue;
       if (destinationValue) params.destination = destinationValue;
@@ -91,6 +103,8 @@ export function FindRide() {
       if (timeEnd) params.timeEnd = timeEnd;
       if (maxPrice) params.maxPrice = maxPrice;
       if (sameGenderOnly) params.sameGenderOnly = "true";
+      if (passengerLat !== undefined) params.passengerLat = passengerLat.toString();
+      if (passengerLng !== undefined) params.passengerLng = passengerLng.toString();
       params.status = "active";
 
       const data = await ridesService.list(params);
