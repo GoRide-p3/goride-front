@@ -51,8 +51,8 @@ export const rideRequestsService = {
   listByRide: (rideId: string) =>
     apiFetch<RideRequestResponse[]>(`/rides/${rideId}/requests`),
 
-  listByPassenger: () =>
-    apiFetch<RideRequestResponse[]>("/passengers/me/requests"),
+  listByPassenger: (passengerId: string) =>
+    apiFetch<RideRequestResponse[]>(`/passengers/${passengerId}/requests`),
 
   update: (requestId: string, status: "accepted" | "rejected") =>
     apiFetch<RideRequestResponse>(`/requests/${requestId}`, {
