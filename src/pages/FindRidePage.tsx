@@ -163,15 +163,21 @@ export function FindRide() {
 
   const handleConfirmRequest = async () => {
     if (!selectedRide || !currentUser) return;
+
     setIsRequesting(true);
     setRequestError(null);
+
+    const validBoarding =
+      boardingCoords && boardingCoords.address === originValue
+        ? boardingCoords
+        : null;
 
     try {
       await rideRequestsService.create(selectedRide.id, {
         passengerId: currentUser.id,
-        boardingAddress: boardingCoords?.address,
-        boardingLat: boardingCoords?.lat,
-        boardingLng: boardingCoords?.lng,
+        boardingAddress: validBoarding?.address,
+        boardingLat: validBoarding?.lat,
+        boardingLng: validBoarding?.lng,
       });
       setShowModal(false);
       setShowSuccessMessage(true);
