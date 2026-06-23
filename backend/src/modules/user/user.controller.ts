@@ -1,16 +1,7 @@
 import type { Request, Response } from "express";
-import { AppError } from "../../lib/app-error.js";
+import { sendControllerError } from "../../lib/controller-error.js";
 import { updateProfileSchema } from "./user.schema.js";
 import * as usersService from "./user.service.js";
-
-function sendControllerError(response: Response, error: unknown) {
-  if (error instanceof AppError) {
-    response.status(error.statusCode).json({ message: error.message });
-    return;
-  }
-  console.error(error);
-  response.status(500).json({ message: "Erro interno do servidor" });
-}
 
 export async function getProfile(request: Request, response: Response) {
   try {
@@ -25,10 +16,24 @@ export async function updateProfile(request: Request, response: Response) {
   try {
     const parsed = updateProfileSchema.safeParse(request.body);
     if (!parsed.success) {
-      response.status(400).json({ message: "Dados inválidos", issues: parsed.error.issues });
+      response.status(400).json({
+        message: "Dados invalidos",
+        issues: parsed.error.issues,
+      });
       return;
     }
-    const user = await usersService.updateProfile(request.params.id, parsed.data);
+
+    if (!request.userId) {
+      response.status(401).json({ message: "Usuario nao autenticado" });
+      return;
+    }
+
+    if (request.userId !== request.params.id) {
+      response.status(403).json({ message: "Perfil nao autorizado" });
+      return;
+    }
+
+    const user = await usersService.updateProfile(request.userId, parsed.data);
     response.json(user);
   } catch (error) {
     sendControllerError(response, error);

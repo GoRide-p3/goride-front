@@ -1,7 +1,6 @@
 import { apiFetch } from "../utils/api";
 
 export interface CreateRidePayload {
-  driverId?: string;
   origin: string;
   destination: string;
   date: string;
@@ -17,6 +16,7 @@ export interface CreateRidePayload {
 
 export interface Ride extends CreateRidePayload {
   id: string;
+  driverId: string;
   driver?: {
     id: string;
     name: string;
@@ -65,6 +65,5 @@ export const ridesService = {
   remove: (id: string) =>
     apiFetch<void>(`/rides/${id}`, { method: "DELETE" }),
 
-  history: (userId: string) =>
-    apiFetch<RideHistoryResponse>(`/rides/history/${userId}`),
+  history: () => apiFetch<RideHistoryResponse>("/rides/history"),
 };

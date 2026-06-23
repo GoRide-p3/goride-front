@@ -161,7 +161,7 @@ export function FindRide() {
     setRequestError(null);
 
     try {
-      await rideRequestsService.create(selectedRide.id, currentUser.id);
+      await rideRequestsService.create(selectedRide.id);
       setShowModal(false);
       setShowSuccessMessage(true);
     } catch (error) {

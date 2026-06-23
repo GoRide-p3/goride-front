@@ -32,21 +32,20 @@ export interface RideRequestResponse {
 }
 
 export const rideRequestsService = {
-  create: (rideId: string, passengerId: string) =>
+  create: (rideId: string) =>
     apiFetch<RideRequestResponse>(`/rides/${rideId}/requests`, {
       method: "POST",
-      body: JSON.stringify({ passengerId }),
     }),
 
   listByRide: (rideId: string) =>
     apiFetch<RideRequestResponse[]>(`/rides/${rideId}/requests`),
 
-  listByPassenger: (passengerId: string) =>
-    apiFetch<RideRequestResponse[]>(`/passengers/${passengerId}/requests`),
+  listByPassenger: () =>
+    apiFetch<RideRequestResponse[]>("/passengers/me/requests"),
 
-  update: (requestId: string, status: "accepted" | "rejected", driverId: string) =>
+  update: (requestId: string, status: "accepted" | "rejected") =>
     apiFetch<RideRequestResponse>(`/requests/${requestId}`, {
       method: "PATCH",
-      body: JSON.stringify({ status, driverId }),
+      body: JSON.stringify({ status }),
     }),
 };

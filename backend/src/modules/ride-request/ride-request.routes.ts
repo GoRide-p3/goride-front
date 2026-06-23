@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authMiddleware } from "../auth/auth.middleware.js";
 import {
   createRideRequest,
   listRideRequests,
@@ -9,11 +10,27 @@ import {
 export const rideRequestsRouter = Router();
 
 // solicitações de uma carona específica
-rideRequestsRouter.post("/rides/:rideId/requests", createRideRequest);
-rideRequestsRouter.get("/rides/:rideId/requests", listRideRequests);
+rideRequestsRouter.post(
+  "/rides/:rideId/requests",
+  authMiddleware,
+  createRideRequest,
+);
+rideRequestsRouter.get(
+  "/rides/:rideId/requests",
+  authMiddleware,
+  listRideRequests,
+);
 
 // aceitar ou recusar uma solicitação
-rideRequestsRouter.patch("/requests/:requestId", updateRideRequest);
+rideRequestsRouter.patch(
+  "/requests/:requestId",
+  authMiddleware,
+  updateRideRequest,
+);
 
 // solicitações de um passageiro
-rideRequestsRouter.get("/passengers/:passengerId/requests", listPassengerRequests);
+rideRequestsRouter.get(
+  "/passengers/me/requests",
+  authMiddleware,
+  listPassengerRequests,
+);

@@ -120,7 +120,6 @@ export function OfferRide() {
 
   try {
     await ridesService.create({
-      driverId: currentUser.id,
       origin: originValue,
       destination: destinationValue,
       date,

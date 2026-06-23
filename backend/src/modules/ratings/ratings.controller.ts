@@ -1,17 +1,7 @@
 import type { Request, Response } from "express";
-import { AppError } from "../../lib/app-error.js";
+import { sendControllerError } from "../../lib/controller-error.js";
 import { createRatingSchema } from "./rating.schema.js";
 import * as ratingsService from "./ratings.service.js";
-
-function sendControllerError(response: Response, error: unknown) {
-  if (error instanceof AppError) {
-    response.status(error.statusCode).json({ message: error.message });
-    return;
-  }
-
-  console.error(error);
-  response.status(500).json({ message: "Erro interno do servidor" });
-}
 
 export async function createRating(request: Request, response: Response) {
   try {
@@ -25,7 +15,15 @@ export async function createRating(request: Request, response: Response) {
       return;
     }
 
-    const rating = await ratingsService.createRating(parsed.data);
+    if (!request.userId) {
+      response.status(401).json({ message: "Usuario nao autenticado" });
+      return;
+    }
+
+    const rating = await ratingsService.createRating(
+      request.userId,
+      parsed.data,
+    );
     response.status(201).json(rating);
   } catch (error) {
     sendControllerError(response, error);
