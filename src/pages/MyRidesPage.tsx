@@ -474,7 +474,6 @@ export function MyRides() {
 
     try {
       await ratingsService.create({
-        fromUserId: currentUser.id,
         toUserId: currentRatingUser.id,
         rideId,
         rating,
@@ -566,7 +565,7 @@ export function MyRides() {
     setRequestAction("accept");
 
     rideRequestsService
-      .update(requestId, "accepted", currentUser!.id) 
+      .update(requestId, "accepted")
       .then(() => {
         const updatedRides = rides.map((ride) => {
           if (ride.id === rideId) {
@@ -600,7 +599,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
   setRequestAction("reject");
 
   rideRequestsService
-    .update(requestId, "rejected", currentUser!.id) 
+    .update(requestId, "rejected")
     .then(() => {
       const updatedRides = rides.map((ride) =>
         ride.id === rideId

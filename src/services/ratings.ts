@@ -28,7 +28,6 @@ export interface ApiRating {
 
 export const ratingsService = {
   create: (data: {
-    fromUserId: string;
     toUserId: string;
     rideId: string;
     rating: number;

@@ -102,7 +102,7 @@ export function History() {
     setHistoryError("");
 
     ridesService
-      .history(currentUser.id)
+      .history()
       .then((history) => {
         setDriverHistory(
           history.offered.map((ride) => ({

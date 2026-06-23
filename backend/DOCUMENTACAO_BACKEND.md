@@ -247,21 +247,12 @@ Resposta:
 
 ```json
 {
-  "message": "Token de redefinicao gerado.",
-  "resetToken": "jwt-temporario"
-}
-```
-
-Para uma apresentacao, o token volta na resposta. Em uma aplicacao real, esse
-token seria enviado por email e nao apareceria direto no JSON.
-
-Se o email nao existir, a API retorna uma mensagem generica:
-
-```json
-{
   "message": "Se o email existir, um link de redefinicao sera enviado."
 }
 ```
+
+O token e enviado apenas por e-mail, expira em 15 minutos e pode ser usado uma
+unica vez. A resposta e a mesma para e-mails existentes e inexistentes.
 
 ### POST /auth/reset-password
 
@@ -271,7 +262,7 @@ Body:
 
 ```json
 {
-  "token": "jwt-temporario",
+  "token": "token-recebido-por-email",
   "password": "nova-senha"
 }
 ```
@@ -351,14 +342,14 @@ GET /rides?origin=Jatiuca&date=2026-05-20&maxPrice=10
 
 Busca uma carona por id.
 
-### GET /rides/history/:userId
+### GET /rides/history
 
-Retorna o historico de caronas de um usuario.
+Retorna o historico de caronas do usuario autenticado.
 
 Exemplo:
 
 ```txt
-GET /rides/history/uuid-do-usuario
+GET /rides/history
 ```
 
 Resposta:
@@ -382,7 +373,6 @@ Body:
 
 ```json
 {
-  "driverId": "uuid-do-motorista",
   "origin": "Jatiuca",
   "destination": "UFAL - Campus A.C. Simoes",
   "date": "2026-05-20",
@@ -399,14 +389,13 @@ Campos opcionais:
 - `availableSeats`
 - `routeId`
 - `routeName`
-- `status`
 
 Regras:
 
 - `totalSeats` deve estar entre 1 e 4.
 - `availableSeats` nao pode ser maior que `totalSeats`.
 - `departureTimeEnd` nao pode ser menor que `departureTimeStart`.
-- `driverId` precisa existir na tabela `User`.
+- O motorista e identificado pelo token de autenticacao.
 
 ### PUT /rides/:id
 
@@ -425,9 +414,7 @@ Exemplo:
 
 Remove uma carona.
 
-Atencao: as rotas de carona ainda nao usam `authMiddleware`. Hoje qualquer
-cliente que souber o id consegue criar, editar ou deletar caronas. O proximo
-passo deveria ser proteger essas rotas e usar o usuario do token como motorista.
+Somente o motorista autenticado pode editar ou remover a propria carona.
 
 ## Solicitacoes de carona
 
@@ -435,13 +422,7 @@ passo deveria ser proteger essas rotas e usar o usuario do token como motorista.
 
 Cria uma solicitacao para participar de uma carona.
 
-Body:
-
-```json
-{
-  "passengerId": "uuid-do-passageiro"
-}
-```
+O passageiro e identificado pelo token de autenticacao; a rota nao recebe body.
 
 Regras atuais:
 
@@ -477,15 +458,11 @@ rejected
 
 Quando aceita, a API decrementa `availableSeats` da carona.
 
-Atencao: essa atualizacao ainda nao usa transacao. Se duas solicitacoes forem
-aceitas ao mesmo tempo, pode haver inconsistencia nas vagas.
+Aceite da solicitacao e reserva da vaga acontecem na mesma transacao.
 
-### GET /passengers/:passengerId/requests
+### GET /passengers/me/requests
 
-Lista solicitacoes feitas por um passageiro.
-
-Atencao: as rotas de solicitacao ainda recebem `passengerId` e `driverId` pelo
-body/parametro. O ideal e usar `request.userId`, vindo do token.
+Lista solicitacoes feitas pelo passageiro autenticado.
 
 ## Avaliacoes
 
@@ -497,7 +474,6 @@ Body:
 
 ```json
 {
-  "fromUserId": "uuid-de-quem-avalia",
   "toUserId": "uuid-de-quem-recebe",
   "rideId": "uuid-da-carona",
   "rating": 5,
@@ -505,16 +481,17 @@ Body:
 }
 ```
 
-Regras atuais:
+Regras:
 
 - A nota precisa estar entre 1 e 5.
 - O usuario nao pode avaliar a si mesmo.
-- A carona precisa existir.
-- Os dois usuarios precisam existir.
+- O avaliador e identificado pelo token de autenticacao.
+- Motorista e passageiro precisam ter participado da carona.
+- A carona precisa ter terminado e nao pode estar cancelada.
 - O mesmo usuario nao pode avaliar a mesma pessoa duas vezes na mesma carona.
 
-Quando a avaliacao e criada, o backend recalcula `rating` e `totalRatings` do
-usuario avaliado.
+Criacao da avaliacao e atualizacao de `rating` e `totalRatings` acontecem na
+mesma transacao.
 
 ### GET /ratings/users/:userId
 

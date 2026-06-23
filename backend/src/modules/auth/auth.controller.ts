@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { AppError } from "../../lib/app-error.js";
+import { sendControllerError } from "../../lib/controller-error.js";
 import {
   changePasswordSchema,
   forgotPasswordSchema,
@@ -7,16 +7,7 @@ import {
   registerSchema,
   resetPasswordSchema,
 } from "./auth.schema.js";
-import * as authService from "../auth/auth.service.js"
-
-function sendControllerError(response: Response, error: unknown) {
-  if (error instanceof AppError) {
-    response.status(error.statusCode).json({ message: error.message });
-    return;
-  }
-  console.error(error);
-  response.status(500).json({ message: "Erro interno do servidor" });
-}
+import * as authService from "../auth/auth.service.js";
 
 export async function register(request: Request, response: Response) {
   try {

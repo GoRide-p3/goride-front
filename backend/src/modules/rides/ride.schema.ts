@@ -18,7 +18,6 @@ const toMinutes = (time: string) => {
 // Validacao para criar uma carona.
 export const createRideSchema = z
   .object({
-    driverId: z.string().min(1),
     origin: z.string().trim().min(2),
     destination: z.string().trim().min(2),
     date: dateSchema,
@@ -30,7 +29,6 @@ export const createRideSchema = z
     routeId: z.string().trim().optional(),
     routeName: z.string().trim().optional(),
     sameGenderOnly: z.coerce.boolean().default(false),
-    status: statusSchema.default("active"),
   })
   .superRefine((data, context) => {
     if (toMinutes(data.departureTimeEnd) < toMinutes(data.departureTimeStart)) {
@@ -56,7 +54,6 @@ export const createRideSchema = z
 // Na edicao todos os campos sao opcionais.
 export const updateRideSchema = z
   .object({
-    driverId: z.string().min(1).optional(),
     origin: z.string().trim().min(2).optional(),
     destination: z.string().trim().min(2).optional(),
     date: dateSchema.optional(),

@@ -32,7 +32,7 @@ const buildLocalRoutes = (origin: string, destination: string): RouteOption[] =>
       isShortest: false,
       description: "Rota direta passando pelas avenidas principais.",
       waypoints: [start, "Av. Fernandes Lima", "BR-104", end],
-      polyline: "", 
+      polyline: "",
     },
     {
       id: "route-1",

@@ -34,6 +34,13 @@ DATABASE_URL="file:./dev.db"
 PORT=3000
 CORS_ORIGIN="http://localhost:5173"
 JWT_SECRET="troque-essa-chave-em-producao"
+FRONTEND_URL="http://localhost:5173"
+APP_TIME_ZONE="America/Sao_Paulo"
+SMTP_HOST="smtp.exemplo.com"
+SMTP_PORT=587
+SMTP_USER="usuario-smtp"
+SMTP_PASS="senha-smtp"
+SMTP_FROM="GoRide <nao-responda@goride.com>"
 ```
 
 ## Rotas principais
@@ -51,7 +58,7 @@ PUT    /user/:id
 
 GET    /rides
 GET    /rides/:id
-GET    /rides/history/:userId
+GET    /rides/history
 POST   /rides
 PUT    /rides/:id
 DELETE /rides/:id
@@ -59,12 +66,16 @@ DELETE /rides/:id
 POST   /rides/:rideId/requests
 GET    /rides/:rideId/requests
 PATCH  /requests/:requestId
-GET    /passengers/:passengerId/requests
+GET    /passengers/me/requests
 
 POST   /ratings
 GET    /ratings/users/:userId
 GET    /ratings/rides/:rideId
 ```
+
+As rotas de escrita, historico e solicitacoes exigem
+`Authorization: Bearer <token>`. A identidade do usuario e extraida do token e
+nao deve ser enviada no body.
 
 ## Documentacao completa
 

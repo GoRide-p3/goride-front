@@ -47,17 +47,6 @@ function formatRide(ride: RideWithDriver) {
   };
 }
 
-async function ensureDriverExists(driverId: string) {
-  const driver = await prisma.user.findUnique({
-    where: { id: driverId },
-    select: { id: true },
-  });
-
-  if (!driver) {
-    throw new AppError("Motorista nao encontrado", 404);
-  }
-}
-
 export async function listRides(query: ListRidesQuery) {
   const where: Prisma.RideWhereInput = {};
 
@@ -129,14 +118,13 @@ export async function getRideHistory(userId: string) {
   };
 }
 
-export async function createRide(data: CreateRideInput) {
-  await ensureDriverExists(data.driverId);
-
+export async function createRide(driverId: string, data: CreateRideInput) {
   const availableSeats = data.availableSeats ?? data.totalSeats;
 
   const ride = await prisma.ride.create({
     data: {
       ...data,
+      driverId,
       availableSeats,
     },
     include: { driver: true },
@@ -145,17 +133,23 @@ export async function createRide(data: CreateRideInput) {
   return formatRide(ride);
 }
 
-export async function updateRide(id: string, data: UpdateRideInput) {
-  await getRideById(id);
+export async function updateRide(
+  id: string,
+  driverId: string,
+  data: UpdateRideInput,
+) {
+  const currentRide = await prisma.ride.findUnique({
+    where: { id },
+    select: { driverId: true, totalSeats: true, availableSeats: true },
+  });
 
-  if (data.driverId) {
-    await ensureDriverExists(data.driverId);
+  if (!currentRide) {
+    throw new AppError("Carona nao encontrada", 404);
   }
 
-  const currentRide = await prisma.ride.findUniqueOrThrow({
-    where: { id },
-    select: { totalSeats: true, availableSeats: true },
-  });
+  if (currentRide.driverId !== driverId) {
+    throw new AppError("Apenas o motorista pode editar a carona", 403);
+  }
 
   const nextTotalSeats = data.totalSeats ?? currentRide.totalSeats;
   const nextAvailableSeats = data.availableSeats ?? currentRide.availableSeats;
@@ -176,7 +170,19 @@ export async function updateRide(id: string, data: UpdateRideInput) {
   return formatRide(ride);
 }
 
-export async function deleteRide(id: string) {
-  await getRideById(id);
+export async function deleteRide(id: string, driverId: string) {
+  const ride = await prisma.ride.findUnique({
+    where: { id },
+    select: { driverId: true },
+  });
+
+  if (!ride) {
+    throw new AppError("Carona nao encontrada", 404);
+  }
+
+  if (ride.driverId !== driverId) {
+    throw new AppError("Apenas o motorista pode excluir a carona", 403);
+  }
+
   await prisma.ride.delete({ where: { id } });
 }

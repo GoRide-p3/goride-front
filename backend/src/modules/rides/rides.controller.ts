@@ -1,25 +1,18 @@
 import type { Request, Response } from "express";
-import { AppError } from "../../lib/app-error.js";
-import { createRideSchema, listRidesQuerySchema, updateRideSchema } from "./ride.schema.js";
-import * as ridesService from "../rides/rides.service.js"
+import type { ZodError } from "zod";
+import { sendControllerError } from "../../lib/controller-error.js";
+import {
+  createRideSchema,
+  listRidesQuerySchema,
+  updateRideSchema,
+} from "./ride.schema.js";
+import * as ridesService from "./rides.service.js";
 
-function sendValidationError(response: Response, error: unknown) {
-  const zodError = error as any;
-
+function sendValidationError(response: Response, error: ZodError) {
   return response.status(400).json({
     message: "Dados invalidos",
-    issues: zodError.issues ?? [{ message: "Revise os campos enviados" }],
+    issues: error.issues,
   });
-}
-
-function sendControllerError(response: Response, error: unknown) {
-  if (error instanceof AppError) {
-    response.status(error.statusCode).json({ message: error.message });
-    return;
-  }
-
-  console.error(error);
-  response.status(500).json({ message: "Erro interno do servidor" });
 }
 
 export async function listRides(request: Request, response: Response) {
@@ -49,7 +42,12 @@ export async function getRideById(request: Request, response: Response) {
 
 export async function getRideHistory(request: Request, response: Response) {
   try {
-    const history = await ridesService.getRideHistory(request.params.userId);
+    if (!request.userId) {
+      response.status(401).json({ message: "Usuario nao autenticado" });
+      return;
+    }
+
+    const history = await ridesService.getRideHistory(request.userId);
     response.json(history);
   } catch (error) {
     sendControllerError(response, error);
@@ -65,7 +63,12 @@ export async function createRide(request: Request, response: Response) {
       return;
     }
 
-    const ride = await ridesService.createRide(parsedBody.data);
+    if (!request.userId) {
+      response.status(401).json({ message: "Usuario nao autenticado" });
+      return;
+    }
+
+    const ride = await ridesService.createRide(request.userId, parsedBody.data);
     response.status(201).json(ride);
   } catch (error) {
     sendControllerError(response, error);
@@ -81,8 +84,14 @@ export async function updateRide(request: Request, response: Response) {
       return;
     }
 
+    if (!request.userId) {
+      response.status(401).json({ message: "Usuario nao autenticado" });
+      return;
+    }
+
     const ride = await ridesService.updateRide(
       request.params.id,
+      request.userId,
       parsedBody.data,
     );
     response.json(ride);
@@ -93,7 +102,12 @@ export async function updateRide(request: Request, response: Response) {
 
 export async function deleteRide(request: Request, response: Response) {
   try {
-    await ridesService.deleteRide(request.params.id);
+    if (!request.userId) {
+      response.status(401).json({ message: "Usuario nao autenticado" });
+      return;
+    }
+
+    await ridesService.deleteRide(request.params.id, request.userId);
     response.status(204).send();
   } catch (error) {
     sendControllerError(response, error);

@@ -6,16 +6,12 @@ import { authService } from "../services/auth";
 export function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [resetToken, setResetToken] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     if (!email.trim()) return;
 
     setError("");
@@ -24,46 +20,12 @@ export function ForgotPassword() {
     try {
       const result = await authService.forgotPassword({ email });
       setSuccessMessage(result.message);
-
-      if (result.resetToken) {
-        setResetToken(result.resetToken);
-      } else {
-        setShowSuccess(true);
-      }
-    } catch (error) {
+    } catch (submitError) {
       setError(
-        error instanceof Error ? error.message : "Erro ao recuperar senha",
+        submitError instanceof Error
+          ? submitError.message
+          : "Erro ao recuperar senha",
       );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleResetPassword(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (newPassword.length < 6) {
-      setError("A nova senha deve ter pelo menos 6 caracteres");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError("As senhas nao conferem");
-      return;
-    }
-
-    setError("");
-    setIsSubmitting(true);
-
-    try {
-      const result = await authService.resetPassword({
-        token: resetToken,
-        password: newPassword,
-      });
-      setSuccessMessage(result.message);
-      setShowSuccess(true);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Erro ao alterar senha");
     } finally {
       setIsSubmitting(false);
     }
@@ -97,91 +59,45 @@ export function ForgotPassword() {
 
           <div className="w-full max-w-md mx-auto">
             <p className="text-gray-600 mb-8">
-              Informe seu e-mail para iniciar a recuperacao da senha.
+              Informe seu e-mail para receber as instrucoes de recuperacao.
             </p>
 
-            {!resetToken ? (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    E-mail
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="seuemail@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                  />
-                </div>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  E-mail
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="seuemail@email.com"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
 
-                {error && <p className="text-sm text-destructive">{error}</p>}
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-4 rounded-xl font-semibold text-accent-foreground bg-accent hover:bg-accent-hover active:scale-[0.98] transition-all duration-200 disabled:opacity-60"
-                >
-                  {isSubmitting ? "Enviando..." : "Enviar instrucoes"}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleResetPassword} className="space-y-5">
-                <div className="rounded-xl bg-secondary p-4 text-sm text-secondary-foreground">
-                  Token recebido da API para demonstracao. Em producao, ele
-                  chegaria por e-mail.
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Nova senha
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Confirmar nova senha
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                  />
-                </div>
-
-                {error && <p className="text-sm text-destructive">{error}</p>}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-4 rounded-xl font-semibold text-accent-foreground bg-accent hover:bg-accent-hover active:scale-[0.98] transition-all duration-200 disabled:opacity-60"
-                >
-                  {isSubmitting ? "Salvando..." : "Alterar senha"}
-                </button>
-              </form>
-            )}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 rounded-xl font-semibold text-accent-foreground bg-accent hover:bg-accent-hover active:scale-[0.98] transition-all duration-200 disabled:opacity-60"
+              >
+                {isSubmitting ? "Enviando..." : "Enviar instrucoes"}
+              </button>
+            </form>
           </div>
         </div>
       </div>
 
-      {showSuccess && (
+      {successMessage && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">
           <div className="bg-background rounded-2xl p-6 max-w-md w-full text-center">
             <h2 className="text-xl font-semibold mb-3 text-foreground">
-              Tudo certo!
+              Verifique seu e-mail
             </h2>
-
-            <p className="text-muted-foreground mb-6">
-              {successMessage || "Operacao concluida com sucesso."}
-            </p>
-
+            <p className="text-muted-foreground mb-6">{successMessage}</p>
             <button
               onClick={() => navigate("/login")}
               className="w-full py-3 bg-accent text-accent-foreground rounded-xl font-medium hover:bg-accent-hover transition-colors"
