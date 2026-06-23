@@ -6,9 +6,9 @@ export interface RideRequestResponse {
   passengerId: string;
   status: "pending" | "accepted" | "rejected";
   createdAt: string;
-  boardingAddress: string | null;
-  boardingTime: string | null;
-  seenBoardingModal: boolean;
+  boardingAddress?: string | null;
+  boardingTime?: string | null;
+  seenBoardingModal?: boolean;
   passenger: {
     id: string;
     name: string;
