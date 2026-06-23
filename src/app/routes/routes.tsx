@@ -12,6 +12,7 @@ import { History } from "../../pages/HistoryPage";
 import { PublicProfile } from "../../pages/PublicProfilePage";
 import { Settings } from "../../pages/SettingsPage";
 import { ForgotPassword } from "../../pages/ForgotPasswordPage";
+import { ResetPassword } from "../../pages/ResetPasswordPage";
 import { RatingsPage } from "../../pages/RatingsPage";
 import { ProtectedRoute } from "../../components/ProtectedRoute"; 
 
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
   {
     path: "/forgot-password",
     Component: ForgotPassword,
+  },
+  {
+    path: "/reset-password",
+    Component: ResetPassword,
   },
   {
     path: "/",

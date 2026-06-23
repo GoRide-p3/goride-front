@@ -1,8 +1,11 @@
 import bcrypt from "bcrypt";
+import { createHash, randomBytes } from "node:crypto";
 import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "../../config/auth.js";
 import { AppError } from "../../lib/app-error.js";
-import { prisma } from "../../lib/prisma.js"
-import {
+import { sendPasswordResetEmail } from "../../lib/mailer.js";
+import { prisma } from "../../lib/prisma.js";
+import type {
   ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
@@ -10,23 +13,15 @@ import {
   ResetPasswordInput,
 } from "./auth.schema.js";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "dev-secret";
 const SALT_ROUNDS = 10;
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET não definido no .env");
-}
+const PASSWORD_RESET_EXPIRATION_MS = 15 * 60 * 1000;
 
 function generateToken(userId: string) {
   return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: "7d" });
 }
 
-function generatePasswordResetToken(userId: string) {
-  return jwt.sign(
-    { sub: userId, purpose: "password-reset" },
-    JWT_SECRET,
-    { expiresIn: "15m" },
-  );
+function hashPasswordResetToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 function formatUser(user: {
@@ -72,9 +67,7 @@ export async function register(data: RegisterInput) {
 
   if (existing) {
     throw new AppError(
-      existing.email === data.email
-        ? "Dados informados já estão vinculados a uma conta ativa."
-        : "Dados informados já estão vinculados a uma conta ativa.",
+      "Dados informados ja estao vinculados a uma conta ativa.",
       409,
     );
   }
@@ -104,13 +97,13 @@ export async function login(data: LoginInput) {
   });
 
   if (!user) {
-    throw new AppError("E-mail ou senha inválidos", 401);
+    throw new AppError("E-mail ou senha invalidos", 401);
   }
 
   const passwordMatch = await bcrypt.compare(data.password, user.passwordHash);
 
   if (!passwordMatch) {
-    throw new AppError("E-mail ou senha inválidos", 401);
+    throw new AppError("E-mail ou senha invalidos", 401);
   }
 
   const token = generateToken(user.id);
@@ -121,46 +114,106 @@ export async function login(data: LoginInput) {
 export async function forgotPassword(data: ForgotPasswordInput) {
   const user = await prisma.user.findUnique({
     where: { email: data.email },
-    select: { id: true },
+    select: { id: true, email: true, name: true },
   });
+  const message = "Se o email existir, um link de redefinicao sera enviado.";
 
   if (!user) {
-    return {
-      message: "Se o email existir, um link de redefinicao sera enviado.",
-    };
+    return { message };
   }
 
-  const resetToken = generatePasswordResetToken(user.id);
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = hashPasswordResetToken(token);
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRATION_MS);
+  const now = new Date();
 
-  return {
-    message: "Token de redefinicao gerado.",
-    resetToken,
-  };
+  const resetToken = await prisma.$transaction(async (transaction) => {
+    await transaction.passwordResetToken.updateMany({
+      where: {
+        userId: user.id,
+        usedAt: null,
+      },
+      data: { usedAt: now },
+    });
+
+    return transaction.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+      select: { id: true },
+    });
+  });
+
+  try {
+    await sendPasswordResetEmail({
+      email: user.email,
+      name: user.name,
+      token,
+    });
+  } catch (error) {
+    console.error("Falha ao enviar e-mail de redefinicao de senha", error);
+    await prisma.passwordResetToken.delete({
+      where: { id: resetToken.id },
+    });
+  }
+
+  return { message };
 }
 
 export async function resetPassword(data: ResetPasswordInput) {
-  try {
-    const payload = jwt.verify(data.token, JWT_SECRET) as {
-      sub: string;
-      purpose?: string;
-    };
+  const tokenHash = hashPasswordResetToken(data.token);
+  const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
+  const now = new Date();
 
-    if (payload.purpose !== "password-reset") {
-      throw new AppError("Token invalido", 401);
+  await prisma.$transaction(async (transaction) => {
+    const resetToken = await transaction.passwordResetToken.findUnique({
+      where: { tokenHash },
+      select: {
+        id: true,
+        userId: true,
+        expiresAt: true,
+        usedAt: true,
+      },
+    });
+
+    if (
+      !resetToken ||
+      resetToken.usedAt ||
+      resetToken.expiresAt.getTime() <= now.getTime()
+    ) {
+      throw new AppError("Token invalido ou expirado", 401);
     }
 
-    const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS);
+    const consumed = await transaction.passwordResetToken.updateMany({
+      where: {
+        id: resetToken.id,
+        usedAt: null,
+        expiresAt: { gt: now },
+      },
+      data: { usedAt: now },
+    });
 
-    await prisma.user.update({
-      where: { id: payload.sub },
+    if (consumed.count !== 1) {
+      throw new AppError("Token invalido ou expirado", 401);
+    }
+
+    await transaction.user.update({
+      where: { id: resetToken.userId },
       data: { passwordHash },
     });
 
-    return { message: "Senha atualizada com sucesso." };
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    throw new AppError("Token invalido ou expirado", 401);
-  }
+    await transaction.passwordResetToken.updateMany({
+      where: {
+        userId: resetToken.userId,
+        usedAt: null,
+      },
+      data: { usedAt: now },
+    });
+  });
+
+  return { message: "Senha atualizada com sucesso." };
 }
 
 export async function changePassword(userId: string, data: ChangePasswordInput) {
