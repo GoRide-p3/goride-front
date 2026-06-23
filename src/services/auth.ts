@@ -25,7 +25,6 @@ export interface AuthResponse {
 
 export interface ForgotPasswordResponse {
   message: string;
-  resetToken?: string;
 }
 
 export const authService = {

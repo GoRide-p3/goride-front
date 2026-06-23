@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authMiddleware } from "../auth/auth.middleware.js";
 import {
   createRide,
   deleteRide,
@@ -11,8 +12,8 @@ import {
 export const ridesRouter = Router();
 
 ridesRouter.get("/", listRides);
-ridesRouter.get("/history/:userId", getRideHistory);
+ridesRouter.get("/history", authMiddleware, getRideHistory);
 ridesRouter.get("/:id", getRideById);
-ridesRouter.post("/", createRide);
-ridesRouter.put("/:id", updateRide);
-ridesRouter.delete("/:id", deleteRide);
+ridesRouter.post("/", authMiddleware, createRide);
+ridesRouter.put("/:id", authMiddleware, updateRide);
+ridesRouter.delete("/:id", authMiddleware, deleteRide);
