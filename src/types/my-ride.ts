@@ -72,6 +72,9 @@ export interface MyRideAsPassenger {
     gender: string;
     rating: number;
   }[];
+  boardingTime: string | null;
+  boardingAddress: string | null;
+  seenBoardingModal: boolean;
   requestedAt: string;
   completedAt?: string;
   passengerRatingGiven?: Rating;

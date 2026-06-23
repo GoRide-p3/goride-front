@@ -61,6 +61,11 @@ export function FindRide() {
   const [isSearching, setIsSearching] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [boardingCoords, setBoardingCoords] = useState<{
+    address: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const savedAddresses = currentUser?.savedAddresses || [];
   const ufalLocation = "UFAL - Campus A.C. Simões";
@@ -90,9 +95,10 @@ export function FindRide() {
           const coords = await ridesService.geocode(originValue);
           passengerLat = coords.lat;
           passengerLng = coords.lng;
-          console.log(`[SEARCH] Geocodificado: ${originValue} → (${passengerLat}, ${passengerLng})`);
+          setBoardingCoords({ address: originValue, lat: coords.lat, lng: coords.lng });
           } catch (error) {
             console.error("[SEARCH] Falha ao geocodificar origem:", error);
+            setBoardingCoords(null);
           }
         }
       const params: Record<string, string> = {};
@@ -161,7 +167,12 @@ export function FindRide() {
     setRequestError(null);
 
     try {
-      await rideRequestsService.create(selectedRide.id, currentUser.id);
+      await rideRequestsService.create(selectedRide.id, {
+        passengerId: currentUser.id,
+        boardingAddress: boardingCoords?.address,
+        boardingLat: boardingCoords?.lat,
+        boardingLng: boardingCoords?.lng,
+      });
       setShowModal(false);
       setShowSuccessMessage(true);
     } catch (error) {
