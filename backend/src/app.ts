@@ -7,9 +7,20 @@ import { userRouter } from "./modules/user/user.routes.js";
 import { rideRequestsRouter } from "./modules/ride-request/ride-request.routes.js";
 import { ratingsRouter } from "./modules/ratings/ratings.routes.js";
 
-const corsOrigins = process.env.CORS_ORIGIN?.split(",").map((origin) =>
-  origin.trim(),
-) ?? ["http://localhost:5173"];
+const defaultCorsOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
+
+const configuredCorsOrigins =
+  process.env.CORS_ORIGIN?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean) ?? [];
+
+const corsOrigins =
+  process.env.NODE_ENV === "production" && configuredCorsOrigins.length > 0
+    ? configuredCorsOrigins
+    : Array.from(new Set([...defaultCorsOrigins, ...configuredCorsOrigins]));
 
 export const app = express();
 
