@@ -36,6 +36,7 @@ import { rideRequestsService } from "../services/ride-request";
 import { ratingsService } from "../services/ratings";
 import { io, Socket } from "socket.io-client";
 import { RideAcceptedModal } from "../components/RideAcceptedModal";
+import { getToken } from "../utils/auth";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -158,7 +159,7 @@ export function MyRides() {
     fetchPassengerRides();
 
     const socket = io(import.meta.env.VITE_API_URL ?? "http://localhost:3000", {
-     query: { userId: currentUser.id },
+      auth: { token: getToken() },
     });
     socketRef.current = socket;
 
