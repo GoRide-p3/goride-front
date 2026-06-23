@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigation, MapPin } from "lucide-react";
-import type { RouteOption } from "../types/route"; 
+import type { RouteOption } from "../types/route";
 
 interface RouteMapProps {
   origin: string;
@@ -46,7 +46,7 @@ const buildLocalRoutes = (origin: string, destination: string): RouteOption[] =>
       isShortest: true,
       description: "Caminho um pouco mais curto, com ruas mais locais.",
       waypoints: [start, "Av. Durval de Goes", "Tabuleiro", end],
-      polyline: "",
+      polyline: "", 
     },
     {
       id: "route-2",
@@ -60,7 +60,7 @@ const buildLocalRoutes = (origin: string, destination: string): RouteOption[] =>
       isShortest: false,
       description: "Alternativa para evitar trechos mais movimentados.",
       waypoints: [start, "Serraria", "Cidade Universitaria", end],
-      polyline: "",
+      polyline: "", 
     },
   ];
 };

@@ -6,6 +6,9 @@ export interface RideRequestResponse {
   passengerId: string;
   status: "pending" | "accepted" | "rejected";
   createdAt: string;
+  boardingAddress?: string | null;
+  boardingTime?: string | null;
+  seenBoardingModal?: boolean;
   passenger: {
     id: string;
     name: string;
@@ -31,10 +34,18 @@ export interface RideRequestResponse {
   };
 }
 
+interface CreateRideRequestPayload {
+  passengerId: string;
+  boardingAddress?: string;
+  boardingLat?: number;
+  boardingLng?: number;
+}
+
 export const rideRequestsService = {
-  create: (rideId: string) =>
+  create: (rideId: string, payload: CreateRideRequestPayload) =>
     apiFetch<RideRequestResponse>(`/rides/${rideId}/requests`, {
       method: "POST",
+      body: JSON.stringify(payload),
     }),
 
   listByRide: (rideId: string) =>
@@ -48,4 +59,9 @@ export const rideRequestsService = {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
+
+  markModalSeen: (requestId: string) =>
+    apiFetch<RideRequestResponse>(`/requests/${requestId}/seen`, {
+      method: "PATCH",
+   }),
 };

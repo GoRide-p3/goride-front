@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   ArrowLeft,
   MapPin,
@@ -34,6 +34,9 @@ import { ridesService } from "../services/rides";
 import { getCurrentUser } from "../utils/auth";
 import { rideRequestsService } from "../services/ride-request";
 import { ratingsService } from "../services/ratings";
+import { io, Socket } from "socket.io-client";
+import { RideAcceptedModal } from "../components/RideAcceptedModal";
+import { getToken } from "../utils/auth";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -79,6 +82,105 @@ export function MyRides() {
   const [ridesAsPassenger, setRidesAsPassenger] = useState<MyRideAsPassenger[]>([]);
   const [loading, setLoading] = useState(true);
   const currentUser = getCurrentUser();
+  const socketRef = useRef<Socket | null>(null);
+  const [rideAcceptedData, setRideAcceptedData] = useState<{
+    requestId: string;
+    driverName: string;
+    origin: string;
+    destination: string;
+    date: string;
+    departureTimeStart: string;
+    boardingAddress: string | null;
+    boardingTime: string | null;
+  } | null>(null);
+
+  const fetchPassengerRides = () => {
+    if (!currentUser) return;
+    rideRequestsService
+      .listByPassenger(currentUser.id)
+      .then((data) => {
+        const mapped: MyRideAsPassenger[] = data.map((request: any) => ({
+          id: request.id,
+          rideId: request.ride.id,
+          origin: request.ride.origin,
+          destination: request.ride.destination,
+          date: request.ride.date,
+          departureTimeStart: request.ride.departureTimeStart,
+          departureTimeEnd: request.ride.departureTimeEnd,
+          price: request.ride.price,
+          totalSeats: request.ride.totalSeats,
+          availableSeats: request.ride.availableSeats,
+          routeId: request.ride.routeId ?? "",
+          routeName: request.ride.routeName ?? "Rota",
+          sameGenderOnly: request.ride.sameGenderOnly,
+          status:
+            request.status === "accepted"
+              ? "confirmed"
+              : request.status === "rejected"
+                ? "cancelled"
+                : "pending",
+          driver: {
+            id: request.ride.driver.id,
+            name: request.ride.driver.name,
+            rating: request.ride.driver.rating,
+            totalRatings: request.ride.driver.totalRatings,
+            phone: request.ride.driver.phone ?? "",
+          },
+          boardingTime: request.boardingTime ?? null,
+          boardingAddress: request.boardingAddress ?? null,
+          seenBoardingModal: request.seenBoardingModal ?? false,
+          otherPassengers: [],
+          requestedAt: request.createdAt,
+        }));
+        setRidesAsPassenger(mapped);
+
+        const firstUnseen = mapped.find(
+          (r) => r.status === "confirmed" && !r.seenBoardingModal && r.boardingTime
+        );
+        if (firstUnseen) {
+          setRideAcceptedData({
+            requestId: firstUnseen.id,
+            driverName: firstUnseen.driver.name,
+            origin: firstUnseen.origin,
+            destination: firstUnseen.destination,
+            date: firstUnseen.date,
+            departureTimeStart: firstUnseen.departureTimeStart,
+            boardingAddress: firstUnseen.boardingAddress,
+            boardingTime: firstUnseen.boardingTime,
+          });
+        }
+      })
+      .catch(console.error);
+  };
+  
+  useEffect(() => {
+    if (!currentUser) return;
+
+    fetchPassengerRides();
+
+    const socket = io(import.meta.env.VITE_API_URL ?? "http://localhost:3000", {
+      auth: { token: getToken() },
+    });
+    socketRef.current = socket;
+
+    socket.on("ride_accepted", (data) => {
+      setRideAcceptedData({
+        requestId: data.requestId,
+        driverName: data.driverName,
+        origin: data.origin,
+        destination: data.destination,
+        date: data.date,
+        departureTimeStart: data.departureTimeStart,
+        boardingAddress: data.boardingAddress,
+        boardingTime: data.boardingTime,
+      });
+      fetchPassengerRides();
+    });
+
+    return () => {
+     socket.disconnect();
+    };
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -146,49 +248,6 @@ export function MyRides() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    rideRequestsService
-      .listByPassenger()
-      .then((data) => {
-        const mapped: MyRideAsPassenger[] = data.map((request: any) => ({
-          id: request.id,
-          rideId: request.ride.id,
-          origin: request.ride.origin,
-          destination: request.ride.destination,
-          date: request.ride.date,
-          departureTimeStart: request.ride.departureTimeStart,
-          departureTimeEnd: request.ride.departureTimeEnd,
-          price: request.ride.price,
-          totalSeats: request.ride.totalSeats,
-          availableSeats: request.ride.availableSeats,
-          routeId: request.ride.routeId ?? "",
-          routeName: request.ride.routeName ?? "Rota",
-          sameGenderOnly: request.ride.sameGenderOnly,
-          status: request.status === "accepted"
-            ? "confirmed"
-            : request.status === "rejected"
-              ? "cancelled"
-              : "pending",
-          driver: {
-            id: request.ride.driver.id,
-            name: request.ride.driver.name,
-            rating: request.ride.driver.rating,
-            totalRatings: request.ride.driver.totalRatings,
-            phone: request.ride.driver.phone ?? "",
-          },
-          otherPassengers: [],
-          passengerRatingGiven: undefined,
-          requestedAt: request.createdAt,
-          createdAt: request.createdAt,
-        }));
-
-        setRidesAsPassenger(mapped);
-      })
-      .catch(console.error);
   }, []);
 
   const [selectedRide, setSelectedRide] = useState<MyRide | null>(null);
@@ -1364,6 +1423,17 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                   {selectedDetailsRide.departureTimeEnd}
                 </span>
               </div>
+              {selectedPassengerRide?.boardingTime && (
+                <div className="col-span-2 flex items-center gap-2 p-2 bg-accent/10 rounded-lg">
+                  <Clock className="w-4 h-4 text-accent flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-gray-500">Horário estimado de embarque</p>
+                    <p className="text-sm font-semibold text-accent">
+                      {selectedPassengerRide.boardingTime}
+                    </p>
+                  </div>
+                </div>
+              )}             
               <div className="flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-gray-500" />
                 <span className="text-sm">
@@ -1957,6 +2027,28 @@ ${
           userType={currentRatingType}
         />
       )}
+
+      <RideAcceptedModal
+        isOpen={rideAcceptedData !== null}
+        onClose={() => {
+          if (rideAcceptedData?.requestId) {
+            rideRequestsService.markModalSeen(rideAcceptedData.requestId)
+              .catch(console.error);
+          }
+          setRideAcceptedData(null);
+        }}
+        data={rideAcceptedData ?? {
+        requestId: "",
+        driverName: "",
+        origin: "",
+        destination: "",
+        date: "",
+        departureTimeStart: "",
+        boardingAddress: null,
+        boardingTime: null,
+        }}
+      />
+
     </div>
   );
 }
