@@ -263,6 +263,7 @@ export function MyRides() {
     rating: number;
   } | null>(null);
   const [chatRideInfo, setChatRideInfo] = useState<{
+    rideId: string;
     date: string;
     origin: string;
     destination: string;
@@ -660,7 +661,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
 
   const openChat = (
     user: { id: string; name: string; rating: number },
-    rideInfo: { date: string; origin: string; destination: string },
+    rideInfo: { rideId: string; date: string; origin: string; destination: string },
   ) => {
     setChatUser(user);
     setChatRideInfo(rideInfo);
@@ -1118,6 +1119,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                                             rating: passenger.passenger.rating,
                                           },
                                           {
+                                            rideId: ride.id,
                                             date: ride.date,
                                             origin: ride.origin,
                                             destination: ride.destination,
@@ -1328,7 +1330,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                             </span>
                           </div>
                         </div>
-                      </button>
+                      </button>*/}
                       {ride.status === "confirmed" && (
                         <button
                           onClick={() =>
@@ -1339,6 +1341,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                                 rating: ride.driver.rating,
                               },
                               {
+                                rideId: ride.rideId,
                                 date: ride.date,
                                 origin: ride.origin,
                                 destination: ride.destination,
@@ -1350,8 +1353,6 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                           <MessageCircle className="w-5 h-5 text-primary-foreground" />
                         </button>
                       )}
-                    </div>
-                  </div> */}
 
                   {/* Complete Ride Button for Passenger */}
                   {ride.status === "confirmed" &&
@@ -1899,6 +1900,8 @@ ${
         <ChatModal
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}
+          currentUserId={currentUser!.id}
+          rideId={chatRideInfo?.rideId ?? ""}
           otherUser={chatUser}
           rideInfo={chatRideInfo}
         />
