@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Menu,
@@ -27,6 +27,7 @@ import { formatLocalDate, parseLocalDate } from "../utils/date";
 import type { SavedAddress } from "../types/user";
 import { userService } from "../services/user";
 import { authService } from "../services/auth";
+import { PlacesAutocomplete } from "../components/PlacesAutocomplete";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -50,6 +51,24 @@ export function Settings() {
     privateMode: false,
     savedAddresses: [],
   };
+
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(
+    typeof window !== "undefined" && !!window.google?.maps,
+  );
+
+  useEffect(() => {
+    if (window.google?.maps) {
+      setGoogleMapsLoaded(true);
+      return;
+    }
+    const interval = setInterval(() => {
+      if (window.google?.maps) {
+        setGoogleMapsLoaded(true);
+        clearInterval(interval);
+      }
+    }, 300);
+    return () => clearInterval(interval);
+  }, []);
 
   const [email, setEmail] = useState(profile.email);
   const [phone, setPhone] = useState(profile.phone || "");
@@ -700,13 +719,22 @@ export function Settings() {
                     <label className="text-sm text-info-foreground mb-2 block font-medium">
                       Endereço
                     </label>
-                    <input
-                      type="text"
-                      value={newAddressValue}
-                      onChange={(e) => setNewAddressValue(e.target.value)}
-                      placeholder="Digite o endereço completo..."
-                      className="w-full px-4 py-3 rounded-xl bg-background border border-transparent focus:border-info-border transition-all outline-none"
-                    />
+                    {googleMapsLoaded ? (
+                      <PlacesAutocomplete
+                        value={newAddressValue}
+                        onChange={setNewAddressValue}
+                        placeholder="Digite o endereço completo..."
+                        className="w-full px-4 py-3 rounded-xl bg-background border border-transparent focus:border-info-border transition-all outline-none"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={newAddressValue}
+                        onChange={(e) => setNewAddressValue(e.target.value)}
+                        placeholder="Digite o endereço completo..."
+                        className="w-full px-4 py-3 rounded-xl bg-background border border-transparent focus:border-info-border transition-all outline-none"
+                      />
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button
