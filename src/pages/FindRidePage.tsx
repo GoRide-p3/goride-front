@@ -560,6 +560,22 @@ export function FindRide() {
                         {formatRideDate(ride.date)}
                       </span>
                     </div>
+
+                    {/* Badge proximity */}
+                    {ride.isNearby && (
+                      <div className="mb-3">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-success text-success-foreground text-xs font-medium rounded-full">
+                          <MapPin className="w-3 h-3" />
+                          Próxima de você
+                          {ride.proximityMeters !== null && ride.proximityMeters !== undefined && (
+                            <span className="opacity-75">
+                              · {Math.round(ride.proximityMeters)}m
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Route Info */}
                     <div className="mb-4 space-y-2">
                       <div className="flex items-center gap-3">
