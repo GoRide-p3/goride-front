@@ -104,6 +104,17 @@ export function OfferRide() {
     return;
   }
 
+  // antecedência mínima de 30 minutos
+  if (date && timeStart) {
+    const [hours, minutes] = timeStart.split(":").map(Number);
+    const rideDateTime = new Date(`${date}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`);
+    const diffMinutes = (rideDateTime.getTime() - new Date().getTime()) / 60000;
+    if (diffMinutes < 30) {
+      setFormError("A carona deve ser publicada com pelo menos 30 minutos de antecedência");
+      return;
+    }
+  }
+
   setShowRoutes(true);
 };
   const handleConfirmRoute = async () => {
