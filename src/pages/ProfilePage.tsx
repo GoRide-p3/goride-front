@@ -8,10 +8,11 @@ import {
   CreditCard,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import { getCurrentUser } from "../utils/auth";
 import { parseLocalDate, formatISODate } from "../utils/date";
+import { ridesService } from "../services/rides";
 
 interface LayoutContext {
   sidebarOpen: boolean;
@@ -48,6 +49,30 @@ export function Profile() {
   };
 
   const age = calculateAge(user.birthDate ?? null);
+
+  const calculateMonthsActive = (createdAt: string) => {
+    const created = new Date(createdAt);
+    const now = new Date();
+    return (
+      (now.getFullYear() - created.getFullYear()) * 12  + 
+      (now.getMonth() - created.getMonth())
+    );
+  };
+ 
+  const monthsActive = user.createdAt ? calculateMonthsActive(user.createdAt) : 0;
+
+  const [totalRides, setTotalRides] = useState(0);
+
+  useEffect(() => {
+    ridesService.history().then((data) => {
+      // soma caronas oferecidas   caronas solicitadas aceitas
+      const offered = data.offered.length;
+      const requested = data.requested.filter(
+        (r) => r.status === "accepted"
+      ).length;
+      setTotalRides(offered + requested);
+    }).catch(console.error);
+  }, []);
 
   const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
@@ -301,11 +326,11 @@ export function Profile() {
                   <p className="text-xs text-gray-600 mt-1">Avaliações</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">0</p>
+                  <p className="text-2xl font-bold text-foreground">{totalRides}</p>
                   <p className="text-xs text-gray-600 mt-1">Caronas</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">0</p>
+                  <p className="text-2xl font-bold text-foreground">{monthsActive}</p>
                   <p className="text-xs text-gray-600 mt-1">Meses ativo</p>
                 </div>
               </div>
