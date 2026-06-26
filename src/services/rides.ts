@@ -35,6 +35,7 @@ export interface RideHistoryResponse {
     id: string;
     status: "pending" | "accepted" | "rejected";
     requestedAt: string;
+    passengerRatingGiven?: boolean;
     ride: Ride;
   }[];
 }
@@ -56,7 +57,7 @@ export const ridesService = {
 
   getById: (id: string) => apiFetch<Ride>(`/rides/${id}`),
 
-  update: (id: string, data: Partial<CreateRidePayload>) =>
+  update: (id: string, data: Partial<CreateRidePayload> & { status?: "active" | "completed" | "cancelled" }) =>
     apiFetch<Ride>(`/rides/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),

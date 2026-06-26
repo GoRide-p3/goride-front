@@ -459,7 +459,7 @@ export function MyRides() {
     }
 
     const rideId =
-      selectedRide?.id ?? selectedPassengerRide?.rideId ?? selectedPassengerRide?.id;
+      selectedRide?.id ?? selectedPassengerRide?.rideId;
     if (!rideId) {
       setRatingSuccessText("Nao foi possivel encontrar a carona avaliada.");
       setShowRatingSuccess(true);
@@ -503,6 +503,12 @@ export function MyRides() {
         return;
       }
 
+      try {
+       await ridesService.update(selectedRide.id, { status: "completed" });
+     } catch (error) {
+       console.error("Erro ao concluir carona:", error);
+     }
+
       // terminou todos passageiros
       setRides(rides.filter((r) => r.id !== selectedRide.id));
 
@@ -523,9 +529,11 @@ export function MyRides() {
 
     // PASSAGEIRO avaliando motorista
     if (selectedPassengerRide) {
-      setRidesAsPassenger(
-        ridesAsPassenger.filter((r) => r.id !== selectedPassengerRide.id),
-      );
+      setRidesAsPassenger(ridesAsPassenger.map((r) =>
+        r.id === selectedPassengerRide.id
+          ? { ...r, passengerRatingGiven: true as any }
+          : r,
+      ));
 
       setRatingModalOpen(false);
 
@@ -1361,7 +1369,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                   </div> */}
 
                   {/* Complete Ride Button for Passenger */}
-                  {ride.status === "confirmed" &&
+                  {ride.status === "confirmed" && !ride.passengerRatingGiven &&
                     isRidePast(ride.date, ride.departureTimeEnd) &&
                     !ride.passengerRatingGiven && (
                       <div className="mt-4">
