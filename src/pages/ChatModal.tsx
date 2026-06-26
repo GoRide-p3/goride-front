@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Send, User } from 'lucide-react';
 import { formatLocalDate } from "../utils/date";
+import { io, Socket } from "socket.io-client";
+import { getToken } from "../utils/auth";
 
 interface Message {
   id: string;
@@ -13,6 +15,8 @@ interface Message {
 interface ChatModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentUserId: string;
+  rideId: string;
   otherUser: {
     id: string;
     name: string;
@@ -25,25 +29,42 @@ interface ChatModalProps {
   };
 }
 
-export function ChatModal({ isOpen, onClose, otherUser, rideInfo }: ChatModalProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      senderId: otherUser.id,
-      senderName: otherUser.name,
-      text: 'Olá! Tudo bem?',
-      timestamp: new Date(Date.now() - 3600000),
-    },
-    {
-      id: '2',
-      senderId: 'me',
-      senderName: 'Você',
-      text: 'Oi! Tudo ótimo, obrigado!',
-      timestamp: new Date(Date.now() - 3000000),
-    },
-  ]);
+export function ChatModal({ isOpen, onClose, currentUserId, rideId, otherUser, rideInfo }: ChatModalProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+     if (!isOpen) return;
+
+     const socket = io(import.meta.env.VITE_API_URL ?? "http://localhost:3000", {
+       auth: { token: getToken() },
+     });
+     socketRef.current = socket;
+
+     const roomId = [rideId, currentUserId, otherUser.id].sort().join("_");
+     socket.emit("join_chat", { roomId });
+
+     socket.on("chat_history", (history: Message[]) => {
+       setMessages(history.map((m) => ({
+         ...m,
+         timestamp: new Date(m.timestamp),
+       })));
+     });
+
+     socket.on("chat_message", (message: Message) => {
+       setMessages((prev) => [...prev, {
+         ...message,
+         timestamp: new Date(message.timestamp),
+       }]);
+     });
+
+     return () => {
+       socket.emit("leave_chat", { roomId });
+       socket.disconnect();
+     };
+   }, [isOpen, rideId, currentUserId, otherUser.id]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,15 +78,10 @@ export function ChatModal({ isOpen, onClose, otherUser, rideInfo }: ChatModalPro
     e.preventDefault();
     if (newMessage.trim() === '') return;
 
-    const message: Message = {
-      id: Date.now().toString(),
-      senderId: 'me',
-      senderName: 'Você',
+    socketRef.current?.emit("send_message", {
+      roomId: [rideId, currentUserId, otherUser.id].sort().join("_"),
       text: newMessage.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages([...messages, message]);
+    });
     setNewMessage('');
   };
 
@@ -121,11 +137,11 @@ export function ChatModal({ isOpen, onClose, otherUser, rideInfo }: ChatModalPro
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.senderId === 'me' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
             >
               <div
                 className={`max-w-[75%] ${
-                  message.senderId === 'me'
+                  message.senderId === currentUserId
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-background text-gray-900 border border-gray-200'
                 } rounded-2xl px-4 py-2 shadow-sm`}
@@ -133,7 +149,7 @@ export function ChatModal({ isOpen, onClose, otherUser, rideInfo }: ChatModalPro
                 <p className="text-sm break-words">{message.text}</p>
                 <p
                   className={`text-xs mt-1 ${
-                    message.senderId === 'me' ? 'text-primary-foreground/70' : 'text-gray-500'
+                    message.senderId === currentUserId ? 'text-primary-foreground/70' : 'text-gray-500'
                   }`}
                 >
                   {formatTime(message.timestamp)}

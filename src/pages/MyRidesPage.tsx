@@ -263,6 +263,7 @@ export function MyRides() {
     rating: number;
   } | null>(null);
   const [chatRideInfo, setChatRideInfo] = useState<{
+    rideId: string;
     date: string;
     origin: string;
     destination: string;
@@ -675,7 +676,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
 
   const openChat = (
     user: { id: string; name: string; rating: number },
-    rideInfo: { date: string; origin: string; destination: string },
+    rideInfo: { rideId: string; date: string; origin: string; destination: string },
   ) => {
     setChatUser(user);
     setChatRideInfo(rideInfo);
@@ -1133,6 +1134,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                                             rating: passenger.passenger.rating,
                                           },
                                           {
+                                            rideId: ride.id,
                                             date: ride.date,
                                             origin: ride.origin,
                                             destination: ride.destination,
@@ -1343,7 +1345,7 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                             </span>
                           </div>
                         </div>
-                      </button>
+                      </button>*/}
                       {ride.status === "confirmed" && (
                         <button
                           onClick={() =>
@@ -1354,19 +1356,19 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
                                 rating: ride.driver.rating,
                               },
                               {
+                                rideId: ride.rideId,
                                 date: ride.date,
                                 origin: ride.origin,
                                 destination: ride.destination,
                               },
                             )
                           }
-                          className="p-3 bg-primary hover:bg-[#2d4a6f] rounded-lg transition-colors"
+                          className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-[#2d4a6f] transition-colors"
                         >
                           <MessageCircle className="w-5 h-5 text-primary-foreground" />
+                          Conversar com o motorista
                         </button>
                       )}
-                    </div>
-                  </div> */}
 
                   {/* Complete Ride Button for Passenger */}
                   {ride.status === "confirmed" && !ride.passengerRatingGiven &&
@@ -1914,6 +1916,8 @@ ${
         <ChatModal
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}
+          currentUserId={currentUser!.id}
+          rideId={chatRideInfo?.rideId ?? ""}
           otherUser={chatUser}
           rideInfo={chatRideInfo}
         />
