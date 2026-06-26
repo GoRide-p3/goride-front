@@ -65,6 +65,7 @@ export function Profile() {
 
   useEffect(() => {
     ridesService.history().then((data) => {
+      // soma caronas oferecidas   caronas solicitadas aceitas
       const offered = data.offered.length;
       const requested = data.requested.filter(
         (r) => r.status === "accepted"
