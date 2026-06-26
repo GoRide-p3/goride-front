@@ -536,7 +536,7 @@ export function MyRides() {
     }
   };
 
-  const handleCancelPassengerRide = (rideId: string) => {
+  const handleCancelPassengerRide = async (rideId: string) => {
     const ride = ridesAsPassenger.find((r) => r.id === rideId);
     if (!ride) return;
 
@@ -550,6 +550,13 @@ export function MyRides() {
         "Penalidade aplicada: -0.1 na nota do usuário por cancelamento de carona recebida",
       );
     }
+
+    try {
+     await rideRequestsService.delete(ride.id);
+   } catch (error) {
+     console.error("Erro ao cancelar solicitação:", error);
+     return;
+   }
 
     setRidesAsPassenger(ridesAsPassenger.filter((r) => r.id !== rideId));
 

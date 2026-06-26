@@ -64,4 +64,9 @@ export const rideRequestsService = {
     apiFetch<RideRequestResponse>(`/requests/${requestId}/seen`, {
       method: "PATCH",
    }),
+
+   delete: (requestId: string) =>
+    apiFetch<void>(`/requests/${requestId}`, {
+      method: "DELETE",
+    }),
 };
