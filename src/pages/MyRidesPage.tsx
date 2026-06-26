@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
+  XCircle,
 } from "lucide-react";
 import { useNavigate, useOutletContext } from "react-router";
 import type {
@@ -482,9 +483,11 @@ export function MyRides() {
       });
     } catch (error) {
       console.error("Erro ao enviar avaliacao:", error);
-      setRatingSuccessText("Erro ao enviar avaliacao. Tente novamente.");
-      setShowRatingSuccess(true);
-      return;
+      if (!error.message?.includes("409") && !error.message?.toLowerCase().includes("já enviada")) {
+        setRatingSuccessText("Erro ao enviar avaliacao. Tente novamente.");
+        setShowRatingSuccess(true);
+        return;
+      }
     }
 
     // MOTORISTA avaliando passageiros
@@ -511,6 +514,12 @@ export function MyRides() {
      }
 
       // terminou todos passageiros
+      try {
+        await ridesService.update(selectedRide.id, { status: "completed" });
+      } catch (error) {
+        console.error("Erro ao concluir carona:", error);
+      }
+
       setRides(rides.filter((r) => r.id !== selectedRide.id));
 
       setRatingModalOpen(false);
@@ -535,6 +544,20 @@ export function MyRides() {
           ? { ...r, passengerRatingGiven: true as any }
           : r,
       ));
+
+      ridesService.history().then((data) => {
+        const requested = data.requested.map((req: any) => ({
+          ...req.ride,
+          id: req.id,
+          rideId: req.ride.id,
+          status: req.status === "accepted" ? "confirmed" : req.status,
+          driver: req.ride.driver,
+          requestedAt: req.requestedAt,
+          passengerRatingGiven: req.passengerRatingGiven,
+          otherPassengers: [],
+        }));
+        setRidesAsPassenger(requested);
+      }).catch(console.error);
 
       setRatingModalOpen(false);
 
@@ -1396,12 +1419,18 @@ const handleRejectRequest = (rideId: string, requestId: string) => {
       {showRatingSuccess && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">
           <div className="bg-background rounded-2xl p-6 max-w-md w-full text-center">
-            <div className="w-16 h-16 bg-success rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-8 h-8 text-success-foreground" />
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              ratingSuccessText.toLowerCase().includes("erro") ? "bg-destructive/10" : "bg-success"
+            }`}>
+              {ratingSuccessText.toLowerCase().includes("erro") ? (
+                <XCircle className="w-8 h-8 text-destructive" />
+              ) : (
+                <CheckCircle2 className="w-8 h-8 text-success-foreground" />
+             )}
             </div>
 
             <h2 className="text-xl font-semibold text-foreground mb-2">
-              Sucesso!
+              {ratingSuccessText.toLowerCase().includes("erro") ? "Ops!" : "Sucesso!"}
             </h2>
 
             <p className="text-gray-600 mb-6">{ratingSuccessText}</p>

@@ -122,7 +122,9 @@ export function History() {
             totalSeats: ride.totalSeats,
             passengers: [],
             sameGenderOnly: ride.sameGenderOnly,
-            status: ride.status,
+            status: ride.status === "active" && ride.date < new Date().toISOString().slice(0, 10)
+              ? "completed"
+              : ride.status as HistoryStatus,
           })),
         );
 
@@ -151,7 +153,9 @@ export function History() {
               duration: "-",
               waypoints: [ride.origin, ride.destination],
             },
-            status: ride.status,
+            status: ride.status === "active" && ride.date < new Date().toISOString().slice(0, 10)
+              ? "completed"
+              : ride.status as HistoryStatus,
           })),
         );
       })
