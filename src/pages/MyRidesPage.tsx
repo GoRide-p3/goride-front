@@ -114,6 +114,7 @@ export function MyRides() {
           routeId: request.ride.routeId ?? "",
           routeName: request.ride.routeName ?? "Rota",
           sameGenderOnly: request.ride.sameGenderOnly,
+          passengerRatingGiven: request.passengerRatingGiven ?? false,
           status:
             request.status === "accepted"
               ? "confirmed"
