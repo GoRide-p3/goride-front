@@ -353,6 +353,7 @@ export function MyRides() {
   const filterReceivedRides = (rideList: MyRideAsPassenger[]) =>
     rideList.filter(
       (ride) =>
+        !ride.passengerRatingGiven &&
         (!sameGenderFilter || ride.sameGenderOnly) &&
         matchesReceivedStatusFilter(ride) &&
         matchesTimeFilter(ride.departureTimeStart) &&
